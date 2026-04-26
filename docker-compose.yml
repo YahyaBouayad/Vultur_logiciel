@@ -1,0 +1,58 @@
+# Utilisé uniquement pour le développement local
+# Le déploiement en production se fait via Railway.app
+
+services:
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: vultur_db
+      POSTGRES_USER: ${DB_USER:-vultur}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vultur_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vultur_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-vultur} -d vultur_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-vultur}:${DB_PASSWORD:-vultur_dev}@db:5432/vultur_db
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_local}
+      CORS_ORIGINS: http://localhost:3000
+      PORT: "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - vultur_net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+    networks:
+      - vultur_net
+
+volumes:
+  postgres_data:
+
+networks:
+  vultur_net:

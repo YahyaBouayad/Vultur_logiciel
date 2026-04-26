@@ -1,0 +1,38 @@
+# ── Environnement Python ──
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# ── Variables d'environnement (secrets) ──
+.env
+.env.local
+.env.prod
+
+# ── Base de données locale ──
+*.db
+*.sqlite3
+
+# ── Logs ──
+*.log
+
+# ── Docker ──
+.docker/
+
+# ── Éditeurs ──
+.vscode/
+.idea/
+*.suo
+*.sw?
+.DS_Store
+Thumbs.db
+
+# ── Frontend (node_modules et build) ──
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
