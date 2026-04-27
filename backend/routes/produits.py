@@ -10,7 +10,7 @@ from security import get_current_user
 router = APIRouter(prefix="/produits", tags=["Produits"])
 
 
-@router.get("/", response_model=List[ProduitOut])
+@router.get("", response_model=List[ProduitOut])
 def get_produits(db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     return db.query(Produit).all()
 
@@ -23,7 +23,7 @@ def get_produit(produit_id: int, db: Session = Depends(get_db), _: Utilisateur =
     return produit
 
 
-@router.post("/", response_model=ProduitOut, status_code=201)
+@router.post("", response_model=ProduitOut, status_code=201)
 def create_produit(data: ProduitCreate, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     existant = db.query(Produit).filter(Produit.reference == data.reference).first()
     if existant:

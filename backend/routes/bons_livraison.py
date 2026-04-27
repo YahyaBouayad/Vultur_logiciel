@@ -24,7 +24,7 @@ def _build_out(bl) -> BonLivraisonOut:
     return out
 
 
-@router.get("/", response_model=BonLivraisonPage)
+@router.get("", response_model=BonLivraisonPage)
 def get_bons(
     skip: int = 0,
     limit: int = 50,
@@ -74,7 +74,7 @@ def get_bon(bl_id: int, db: Session = Depends(get_db), _: Utilisateur = Depends(
     return _build_out(bl)
 
 
-@router.post("/", response_model=BonLivraisonOut, status_code=201)
+@router.post("", response_model=BonLivraisonOut, status_code=201)
 def create_bon(data: BonLivraisonCreate, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     if not data.lignes:
         raise HTTPException(status_code=400, detail="Le bon de livraison doit contenir au moins une ligne")

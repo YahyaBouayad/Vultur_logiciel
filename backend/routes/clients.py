@@ -10,7 +10,7 @@ from security import get_current_user
 router = APIRouter(prefix="/clients", tags=["Clients"])
 
 
-@router.get("/", response_model=List[ClientOut])
+@router.get("", response_model=List[ClientOut])
 def get_clients(db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     return db.query(Client).all()
 
@@ -23,7 +23,7 @@ def get_client(client_id: int, db: Session = Depends(get_db), _: Utilisateur = D
     return client
 
 
-@router.post("/", response_model=ClientOut, status_code=201)
+@router.post("", response_model=ClientOut, status_code=201)
 def create_client(data: ClientCreate, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     if data.particulier and data.ice:
         raise HTTPException(status_code=400, detail="Un particulier ne peut pas avoir d'ICE")

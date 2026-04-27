@@ -15,7 +15,7 @@ router = APIRouter(prefix="/bons-commande", tags=["Bons de commande"])
 CYCLE = ["brouillon", "envoyé", "reçu"]
 
 
-@router.get("/", response_model=List[BonCommandeOut])
+@router.get("", response_model=List[BonCommandeOut])
 def get_bons(
     date_debut: Optional[datetime.date] = None,
     date_fin: Optional[datetime.date] = None,
@@ -36,7 +36,7 @@ def get_bon(bc_id: int, db: Session = Depends(get_db), _: Utilisateur = Depends(
     return bc
 
 
-@router.post("/", response_model=BonCommandeOut, status_code=201)
+@router.post("", response_model=BonCommandeOut, status_code=201)
 def create_bon(data: BonCommandeCreate, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     if not data.lignes:
         raise HTTPException(status_code=400, detail="Le bon de commande doit contenir au moins une ligne")

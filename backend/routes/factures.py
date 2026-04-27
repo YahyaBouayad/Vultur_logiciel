@@ -77,7 +77,7 @@ def get_impayes(db: Session = Depends(get_db), _: Utilisateur = Depends(get_curr
     return sorted(result, key=lambda x: x.jours_retard, reverse=True)
 
 
-@router.get("/", response_model=FacturePage)
+@router.get("", response_model=FacturePage)
 def get_factures(
     skip: int = 0,
     limit: int = 50,
@@ -124,7 +124,7 @@ def get_facture(facture_id: int, db: Session = Depends(get_db), _: Utilisateur =
     return _build_out(f)
 
 
-@router.post("/", response_model=FactureOut, status_code=201)
+@router.post("", response_model=FactureOut, status_code=201)
 def create_facture(data: FactureCreate, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     bl = db.query(BonLivraison).filter(BonLivraison.id == data.bon_livraison_id).first()
     if not bl:
