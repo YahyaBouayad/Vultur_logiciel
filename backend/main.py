@@ -17,15 +17,10 @@ with engine.connect() as _conn:
 
 app = FastAPI(title="Vultur - Gestion d'entreprise")
 
-_cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173")
-cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
-cors_wildcard = cors_origins == ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if cors_wildcard else cors_origins,
-    allow_origin_regex=r".*" if cors_wildcard else None,
-    allow_credentials=not cors_wildcard,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
