@@ -4,7 +4,6 @@ from sqlalchemy import text
 from database import engine, Base
 import models  # noqa: enregistre tous les modèles sur Base
 from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth
-import os
 
 Base.metadata.create_all(bind=engine)
 
@@ -15,7 +14,7 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE bons_livraison ADD COLUMN IF NOT EXISTS date_encaissement DATE"))
     _conn.commit()
 
-app = FastAPI(title="Vultur - Gestion d'entreprise")
+app = FastAPI(title="Vultur - Gestion d'entreprise", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
