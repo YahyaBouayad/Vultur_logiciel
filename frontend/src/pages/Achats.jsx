@@ -121,9 +121,9 @@ export default function Achats() {
         notes: values.notes || null,
         lignes: lignes.map(l => ({
           produit_id:    l.produit_id,
-          quantite:      l.quantite,
-          prix_unitaire: l.prix_unitaire,
-          remise:        l.remise || 0,
+          quantite:      l.quantite ?? 1,
+          prix_unitaire: l.prix_unitaire ?? 0,
+          remise:        l.remise ?? 0,
         })),
         pdf_base64: pdfBase64 || null,
       }
