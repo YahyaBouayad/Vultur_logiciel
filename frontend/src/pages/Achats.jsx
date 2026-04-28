@@ -316,7 +316,7 @@ export default function Achats() {
         okText={modalMode === 'edit' ? 'Enregistrer' : 'Créer'}
         cancelText="Annuler"
         confirmLoading={formLoading}
-        width={780}
+        width={920}
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', gap: 16 }}>
@@ -356,20 +356,19 @@ export default function Achats() {
           <Divider orientation="left" style={{ fontSize: 13 }}>Lignes de commande</Divider>
 
           {/* En-tête colonnes */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 4, paddingLeft: 2 }}>
-            <Text type="secondary" style={{ flex: 2, fontSize: 12 }}>Produit</Text>
-            <Text type="secondary" style={{ width: 75, fontSize: 12 }}>Qté</Text>
-            <Text type="secondary" style={{ width: 120, fontSize: 12 }}>Prix unit.</Text>
-            <Text type="secondary" style={{ width: 90, fontSize: 12 }}>Remise %</Text>
-            <Text type="secondary" style={{ width: 110, fontSize: 12 }}>Sous-total</Text>
-            <div style={{ width: 32 }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 70px 130px 100px 120px 32px', gap: 8, marginBottom: 6, padding: '0 2px' }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>Produit</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>Qté</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>Prix unitaire</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>Remise</Text>
+            <Text type="secondary" style={{ fontSize: 12, textAlign: 'right' }}>Sous-total</Text>
+            <div />
           </div>
 
           {lignes.map((ligne, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '3fr 70px 130px 100px 120px 32px', gap: 8, marginBottom: 10, alignItems: 'center' }}>
               <Select
                 placeholder="Produit"
-                style={{ flex: 2 }}
                 value={ligne.produit_id}
                 onChange={(v) => updateLigne(idx, 'produit_id', v)}
                 options={produits.map(p => ({ value: p.id, label: `${p.reference} — ${p.nom}` }))}
@@ -379,21 +378,21 @@ export default function Achats() {
               <InputNumber
                 min={1} value={ligne.quantite}
                 onChange={(v) => updateLigne(idx, 'quantite', v)}
-                style={{ width: 75 }}
+                style={{ width: '100%' }}
               />
               <InputNumber
                 min={0} precision={2} value={ligne.prix_unitaire}
                 onChange={(v) => updateLigne(idx, 'prix_unitaire', v)}
-                style={{ width: 120 }} addonAfter="MAD"
+                style={{ width: '100%' }} addonAfter="MAD"
               />
               <InputNumber
                 min={0} max={100} precision={1} value={ligne.remise || 0}
                 onChange={(v) => updateLigne(idx, 'remise', v || 0)}
-                style={{ width: 90 }} addonAfter="%"
+                style={{ width: '100%' }} addonAfter="%"
               />
-              <Text strong style={{ width: 110, textAlign: 'right', color: '#0f172a', fontSize: 13 }}>
+              <div style={{ textAlign: 'right', fontWeight: 600, fontSize: 13, color: '#0f172a', whiteSpace: 'nowrap' }}>
                 {totalLigne(ligne).toFixed(2)} MAD
-              </Text>
+              </div>
               <Button icon={<MinusCircleOutlined />} danger
                 disabled={lignes.length === 1} onClick={() => removeLigne(idx)} />
             </div>
