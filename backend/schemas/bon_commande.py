@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from decimal import Decimal
-from datetime import date
+import datetime
 
 
 class LigneCommandeCreate(BaseModel):
@@ -24,7 +24,7 @@ class LigneCommandeOut(BaseModel):
 
 class BonCommandeCreate(BaseModel):
     fournisseur_id: int
-    date: Optional[date] = None
+    date: Optional[datetime.date] = None
     notes: Optional[str] = None
     lignes: List[LigneCommandeCreate]
     pdf_base64: Optional[str] = None
@@ -32,7 +32,7 @@ class BonCommandeCreate(BaseModel):
 
 class BonCommandeUpdate(BaseModel):
     fournisseur_id: Optional[int] = None
-    date: Optional[date] = None
+    date: Optional[datetime.date] = None
     notes: Optional[str] = None
     lignes: Optional[List[LigneCommandeCreate]] = None
     pdf_base64: Optional[str] = None
@@ -45,7 +45,7 @@ class StatutCommandeUpdate(BaseModel):
 class BonCommandeOut(BaseModel):
     id: int
     fournisseur_id: int
-    date: date
+    date: datetime.date
     statut: str
     notes: Optional[str]
     lignes: List[LigneCommandeOut]
