@@ -8,6 +8,7 @@ class LigneCommandeCreate(BaseModel):
     produit_id: int
     quantite: int
     prix_unitaire: Decimal
+    remise: Decimal = Decimal('0')
 
 
 class LigneCommandeOut(BaseModel):
@@ -15,6 +16,7 @@ class LigneCommandeOut(BaseModel):
     produit_id: int
     quantite: int
     prix_unitaire: Decimal
+    remise: Decimal = Decimal('0')
 
     class Config:
         from_attributes = True
@@ -22,8 +24,18 @@ class LigneCommandeOut(BaseModel):
 
 class BonCommandeCreate(BaseModel):
     fournisseur_id: int
+    date: Optional[date] = None
     notes: Optional[str] = None
     lignes: List[LigneCommandeCreate]
+    pdf_base64: Optional[str] = None
+
+
+class BonCommandeUpdate(BaseModel):
+    fournisseur_id: Optional[int] = None
+    date: Optional[date] = None
+    notes: Optional[str] = None
+    lignes: Optional[List[LigneCommandeCreate]] = None
+    pdf_base64: Optional[str] = None
 
 
 class StatutCommandeUpdate(BaseModel):
@@ -37,6 +49,7 @@ class BonCommandeOut(BaseModel):
     statut: str
     notes: Optional[str]
     lignes: List[LigneCommandeOut]
+    pdf_base64: Optional[str] = None
 
     class Config:
         from_attributes = True

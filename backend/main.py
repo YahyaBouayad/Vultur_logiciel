@@ -12,6 +12,8 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE bons_livraison ADD COLUMN IF NOT EXISTS encaisse BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE bons_livraison ADD COLUMN IF NOT EXISTS mode_encaissement VARCHAR"))
     _conn.execute(text("ALTER TABLE bons_livraison ADD COLUMN IF NOT EXISTS date_encaissement DATE"))
+    _conn.execute(text("ALTER TABLE lignes_bon_commande ADD COLUMN IF NOT EXISTS remise NUMERIC(5,2) NOT NULL DEFAULT 0"))
+    _conn.execute(text("ALTER TABLE bons_commande ADD COLUMN IF NOT EXISTS pdf_base64 TEXT"))
     _conn.commit()
 
 app = FastAPI(title="Vultur - Gestion d'entreprise", redirect_slashes=False)

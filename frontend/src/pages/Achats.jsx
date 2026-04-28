@@ -1,13 +1,15 @@
 import {
-  Table, Button, Input, Space, Tag, Typography, Modal, Form,
+  Table, Button, Input, Space, Typography, Modal, Form,
   Select, InputNumber, Popconfirm, message, Tooltip, Drawer,
-  Divider, Badge, Empty
+  Divider, Badge, Empty, DatePicker, Upload
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
-  CheckCircleOutlined, SendOutlined, MinusCircleOutlined
+  CheckCircleOutlined, SendOutlined, MinusCircleOutlined,
+  FilePdfOutlined, UploadOutlined
 } from '@ant-design/icons'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import dayjs from 'dayjs'
 import api from '../api/axios'
 
 const { Title, Text } = Typography
@@ -21,21 +23,30 @@ const nextAction = {
   envoyé:    { label: 'Marquer reçu',   icon: <CheckCircleOutlined /> },
 }
 
+const totalLigne = (l) =>
+  (l.quantite || 0) * (l.prix_unitaire || 0) * (1 - (l.remise || 0) / 100)
+
+const totalBC = (bc) =>
+  bc.lignes.reduce((s, l) => s + l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100), 0)
+
 export default function Achats() {
-  const [bons, setBons]               = useState([])
-  const [filtered, setFiltered]       = useState([])
-  const [loading, setLoading]         = useState(false)
-  const [search, setSearch]           = useState('')
+  const [bons, setBons]         = useState([])
+  const [filtered, setFiltered] = useState([])
+  const [loading, setLoading]   = useState(false)
+  const [search, setSearch]     = useState('')
 
   const [fournisseurs, setFournisseurs] = useState([])
   const [produits, setProduits]         = useState([])
 
   const [modalOpen, setModalOpen]     = useState(false)
+  const [modalMode, setModalMode]     = useState('create')
+  const [editingId, setEditingId]     = useState(null)
   const [formLoading, setFormLoading] = useState(false)
-  const [lignes, setLignes]           = useState([{ produit_id: null, quantite: 1, prix_unitaire: 0 }])
+  const [lignes, setLignes]           = useState([{ produit_id: null, quantite: 1, prix_unitaire: 0, remise: 0 }])
+  const [pdfBase64, setPdfBase64]     = useState(null)
 
-  const [drawer, setDrawer]           = useState(false)
-  const [selected, setSelected]       = useState(null)
+  const [drawer, setDrawer]     = useState(false)
+  const [selected, setSelected] = useState(null)
 
   const [form] = Form.useForm()
 
@@ -71,7 +82,29 @@ export default function Achats() {
 
   const openAdd = () => {
     form.resetFields()
-    setLignes([{ produit_id: null, quantite: 1, prix_unitaire: 0 }])
+    form.setFieldsValue({ date: dayjs() })
+    setLignes([{ produit_id: null, quantite: 1, prix_unitaire: 0, remise: 0 }])
+    setPdfBase64(null)
+    setModalMode('create')
+    setEditingId(null)
+    setModalOpen(true)
+  }
+
+  const openEdit = (record) => {
+    form.setFieldsValue({
+      fournisseur_id: record.fournisseur_id,
+      date: dayjs(record.date),
+      notes: record.notes || '',
+    })
+    setLignes(record.lignes.map(l => ({
+      produit_id:    l.produit_id,
+      quantite:      l.quantite,
+      prix_unitaire: Number(l.prix_unitaire),
+      remise:        Number(l.remise || 0),
+    })))
+    setPdfBase64(record.pdf_base64 || null)
+    setModalMode('edit')
+    setEditingId(record.id)
     setModalOpen(true)
   }
 
@@ -82,16 +115,25 @@ export default function Achats() {
     }
     setFormLoading(true)
     try {
-      await api.post('/bons-commande', {
+      const payload = {
         fournisseur_id: values.fournisseur_id,
+        date: values.date ? values.date.format('YYYY-MM-DD') : null,
         notes: values.notes || null,
         lignes: lignes.map(l => ({
-          produit_id: l.produit_id,
-          quantite: l.quantite,
+          produit_id:    l.produit_id,
+          quantite:      l.quantite,
           prix_unitaire: l.prix_unitaire,
+          remise:        l.remise || 0,
         })),
-      })
-      message.success('Bon de commande créé')
+        pdf_base64: pdfBase64 || null,
+      }
+      if (modalMode === 'edit') {
+        await api.put(`/bons-commande/${editingId}`, payload)
+        message.success('Bon de commande modifié')
+      } else {
+        await api.post('/bons-commande', payload)
+        message.success('Bon de commande créé')
+      }
       setModalOpen(false)
       fetchAll()
     } catch (e) {
@@ -133,11 +175,26 @@ export default function Achats() {
     setLignes(updated)
   }
 
-  const addLigne   = () => setLignes([...lignes, { produit_id: null, quantite: 1, prix_unitaire: 0 }])
+  const addLigne    = () => setLignes([...lignes, { produit_id: null, quantite: 1, prix_unitaire: 0, remise: 0 }])
   const removeLigne = (idx) => setLignes(lignes.filter((_, i) => i !== idx))
 
-  const totalBC = (bc) =>
-    bc.lignes.reduce((s, l) => s + l.quantite * Number(l.prix_unitaire), 0)
+  const handlePdfUpload = (file) => {
+    if (file.size > 5 * 1024 * 1024) {
+      message.error('Le fichier PDF ne doit pas dépasser 5 Mo')
+      return false
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => setPdfBase64(e.target.result.split(',')[1])
+    reader.readAsDataURL(file)
+    return false
+  }
+
+  const downloadPdf = (bc) => {
+    const link = document.createElement('a')
+    link.href = `data:application/pdf;base64,${bc.pdf_base64}`
+    link.download = `BC-${String(bc.id).padStart(4, '0')}.pdf`
+    link.click()
+  }
 
   const columns = [
     {
@@ -179,32 +236,37 @@ export default function Achats() {
     {
       title: 'Actions',
       key: 'actions',
-      width: 160,
+      width: 200,
       render: (_, record) => (
-        <Space>
+        <Space size={4}>
           <Tooltip title="Voir le détail">
             <Button size="small" onClick={() => { setSelected(record); setDrawer(true) }}>
               Détail
             </Button>
           </Tooltip>
+          {record.pdf_base64 && (
+            <Tooltip title="Télécharger le PDF">
+              <Button size="small" icon={<FilePdfOutlined />}
+                style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                onClick={() => downloadPdf(record)} />
+            </Tooltip>
+          )}
+          {record.statut === 'brouillon' && (
+            <Tooltip title="Modifier">
+              <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+            </Tooltip>
+          )}
           {nextAction[record.statut] && (
             <Tooltip title={nextAction[record.statut].label}>
-              <Button
-                size="small"
-                type="primary"
-                ghost
+              <Button size="small" type="primary" ghost
                 icon={nextAction[record.statut].icon}
-                onClick={() => handleAvancer(record)}
-              />
+                onClick={() => handleAvancer(record)} />
             </Tooltip>
           )}
           {record.statut === 'brouillon' && (
             <Tooltip title="Supprimer">
-              <Popconfirm
-                title="Supprimer ce bon de commande ?"
-                onConfirm={() => handleDelete(record.id)}
-                okText="Oui" cancelText="Non"
-              >
+              <Popconfirm title="Supprimer ce bon de commande ?"
+                onConfirm={() => handleDelete(record.id)} okText="Oui" cancelText="Non">
                 <Button icon={<DeleteOutlined />} size="small" danger />
               </Popconfirm>
             </Tooltip>
@@ -213,6 +275,8 @@ export default function Achats() {
       ),
     },
   ]
+
+  const totalFormulaire = lignes.reduce((s, l) => s + totalLigne(l), 0)
 
   return (
     <div>
@@ -243,35 +307,66 @@ export default function Achats() {
         />
       </div>
 
-      {/* Modale création */}
+      {/* Modal création / modification */}
       <Modal
-        title="Nouveau bon de commande"
+        title={modalMode === 'edit' ? `Modifier le BC #${editingId}` : 'Nouveau bon de commande'}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         onOk={() => form.submit()}
-        okText="Créer"
+        okText={modalMode === 'edit' ? 'Enregistrer' : 'Créer'}
         cancelText="Annuler"
         confirmLoading={formLoading}
-        width={680}
+        width={780}
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 16 }}>
-          <Form.Item name="fournisseur_id" label="Fournisseur" rules={[{ required: true, message: 'Fournisseur requis' }]}>
-            <Select
-              placeholder="Sélectionner un fournisseur"
-              options={fournisseurs.map(f => ({ value: f.id, label: f.nom }))}
-              showSearch
-              filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
-            />
-          </Form.Item>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item name="fournisseur_id" label="Fournisseur"
+              rules={[{ required: true, message: 'Fournisseur requis' }]}
+              style={{ flex: 2 }}>
+              <Select
+                placeholder="Sélectionner un fournisseur"
+                options={fournisseurs.map(f => ({ value: f.id, label: f.nom }))}
+                showSearch
+                filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
+              />
+            </Form.Item>
+            <Form.Item name="date" label="Date" rules={[{ required: true, message: 'Date requise' }]} style={{ flex: 1 }}>
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+            </Form.Item>
+          </div>
 
           <Form.Item name="notes" label="Notes">
             <Input.TextArea rows={2} placeholder="Remarques optionnelles..." />
           </Form.Item>
 
+          <Form.Item label="PDF du bon de commande (optionnel)">
+            <Upload beforeUpload={handlePdfUpload} accept=".pdf" maxCount={1} showUploadList={false}>
+              <Button icon={<UploadOutlined />}>
+                {pdfBase64 ? '✓ PDF chargé — cliquer pour remplacer' : 'Joindre un PDF'}
+              </Button>
+            </Upload>
+            {pdfBase64 && (
+              <Button type="link" danger size="small" style={{ marginLeft: 8 }}
+                onClick={() => setPdfBase64(null)}>
+                Supprimer
+              </Button>
+            )}
+          </Form.Item>
+
           <Divider orientation="left" style={{ fontSize: 13 }}>Lignes de commande</Divider>
 
+          {/* En-tête colonnes */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 4, paddingLeft: 2 }}>
+            <Text type="secondary" style={{ flex: 2, fontSize: 12 }}>Produit</Text>
+            <Text type="secondary" style={{ width: 75, fontSize: 12 }}>Qté</Text>
+            <Text type="secondary" style={{ width: 120, fontSize: 12 }}>Prix unit.</Text>
+            <Text type="secondary" style={{ width: 90, fontSize: 12 }}>Remise %</Text>
+            <Text type="secondary" style={{ width: 110, fontSize: 12 }}>Sous-total</Text>
+            <div style={{ width: 32 }} />
+          </div>
+
           {lignes.map((ligne, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'flex-start' }}>
+            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
               <Select
                 placeholder="Produit"
                 style={{ flex: 2 }}
@@ -282,27 +377,25 @@ export default function Achats() {
                 filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
               />
               <InputNumber
-                min={1}
-                value={ligne.quantite}
+                min={1} value={ligne.quantite}
                 onChange={(v) => updateLigne(idx, 'quantite', v)}
-                placeholder="Qté"
-                style={{ width: 80 }}
+                style={{ width: 75 }}
               />
               <InputNumber
-                min={0}
-                precision={2}
-                value={ligne.prix_unitaire}
+                min={0} precision={2} value={ligne.prix_unitaire}
                 onChange={(v) => updateLigne(idx, 'prix_unitaire', v)}
-                placeholder="Prix unit."
-                style={{ width: 120 }}
-                addonAfter="MAD"
+                style={{ width: 120 }} addonAfter="MAD"
               />
-              <Button
-                icon={<MinusCircleOutlined />}
-                danger
-                disabled={lignes.length === 1}
-                onClick={() => removeLigne(idx)}
+              <InputNumber
+                min={0} max={100} precision={1} value={ligne.remise || 0}
+                onChange={(v) => updateLigne(idx, 'remise', v || 0)}
+                style={{ width: 90 }} addonAfter="%"
               />
+              <Text strong style={{ width: 110, textAlign: 'right', color: '#0f172a', fontSize: 13 }}>
+                {totalLigne(ligne).toFixed(2)} MAD
+              </Text>
+              <Button icon={<MinusCircleOutlined />} danger
+                disabled={lignes.length === 1} onClick={() => removeLigne(idx)} />
             </div>
           ))}
 
@@ -310,9 +403,9 @@ export default function Achats() {
             Ajouter une ligne
           </Button>
 
-          <div style={{ textAlign: 'right', marginTop: 12 }}>
-            <Text strong>
-              Total : {lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prix_unitaire || 0), 0).toFixed(2)} MAD
+          <div style={{ textAlign: 'right', marginTop: 14, padding: '10px 14px', background: '#f8fafc', borderRadius: 8 }}>
+            <Text strong style={{ fontSize: 15 }}>
+              Total : {totalFormulaire.toFixed(2)} MAD
             </Text>
           </div>
         </Form>
@@ -323,7 +416,16 @@ export default function Achats() {
         title={`Bon de commande #${selected?.id}`}
         open={drawer}
         onClose={() => setDrawer(false)}
-        width={500}
+        width={520}
+        extra={
+          selected?.pdf_base64 && (
+            <Button icon={<FilePdfOutlined />}
+              style={{ color: '#dc2626', borderColor: '#dc2626' }}
+              onClick={() => downloadPdf(selected)}>
+              PDF
+            </Button>
+          )
+        }
       >
         {selected && (
           <>
@@ -368,18 +470,28 @@ export default function Achats() {
                       return p ? `${p.reference} — ${p.nom}` : id
                     },
                   },
-                  { title: 'Qté', dataIndex: 'quantite', width: 60 },
+                  { title: 'Qté', dataIndex: 'quantite', width: 55 },
                   {
                     title: 'Prix unit.',
                     dataIndex: 'prix_unitaire',
-                    width: 110,
+                    width: 100,
                     render: (v) => `${Number(v).toFixed(2)} MAD`,
+                  },
+                  {
+                    title: 'Remise',
+                    dataIndex: 'remise',
+                    width: 70,
+                    render: (v) => Number(v || 0) > 0
+                      ? <Text type="warning">{Number(v).toFixed(1)}%</Text>
+                      : <Text type="secondary">—</Text>,
                   },
                   {
                     title: 'Sous-total',
                     width: 110,
                     render: (_, l) => (
-                      <Text strong>{(l.quantite * Number(l.prix_unitaire)).toFixed(2)} MAD</Text>
+                      <Text strong>
+                        {(l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100)).toFixed(2)} MAD
+                      </Text>
                     ),
                   },
                 ]}
