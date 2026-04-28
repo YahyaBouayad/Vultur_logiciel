@@ -116,17 +116,18 @@ export default function Achats() {
     setFormLoading(true)
     try {
       const payload = {
-        fournisseur_id: values.fournisseur_id,
+        fournisseur_id: Number(values.fournisseur_id),
         date: values.date ? values.date.format('YYYY-MM-DD') : null,
         notes: values.notes || null,
         lignes: lignes.map(l => ({
-          produit_id:    l.produit_id,
-          quantite:      l.quantite ?? 1,
-          prix_unitaire: l.prix_unitaire ?? 0,
-          remise:        l.remise ?? 0,
+          produit_id:    Number(l.produit_id),
+          quantite:      Math.max(1, Math.round(Number(l.quantite ?? 1))),
+          prix_unitaire: Number((l.prix_unitaire ?? 0)),
+          remise:        Number((l.remise ?? 0)),
         })),
         pdf_base64: pdfBase64 || null,
       }
+      console.log('payload envoyé:', JSON.stringify(payload, null, 2))
       if (modalMode === 'edit') {
         await api.put(`/bons-commande/${editingId}`, payload)
         message.success('Bon de commande modifié')
@@ -137,7 +138,14 @@ export default function Achats() {
       setModalOpen(false)
       fetchAll()
     } catch (e) {
-      message.error(e.response?.data?.detail || 'Erreur')
+      const detail = e.response?.data?.detail
+      console.error('Erreur API:', e.response?.data)
+      if (Array.isArray(detail)) {
+        const msg = detail.map(d => `${d.loc?.slice(1).join('.')} : ${d.msg}`).join(' | ')
+        message.error(msg, 6)
+      } else {
+        message.error(detail || 'Erreur')
+      }
     } finally {
       setFormLoading(false)
     }
