@@ -425,13 +425,21 @@ export default function Achats() {
         onClose={() => setDrawer(false)}
         width={520}
         extra={
-          selected?.pdf_base64 && (
-            <Button icon={<FilePdfOutlined />}
-              style={{ color: '#dc2626', borderColor: '#dc2626' }}
-              onClick={() => downloadPdf(selected)}>
-              PDF
+          <Space>
+            {selected?.pdf_base64 && (
+              <Button icon={<FilePdfOutlined />}
+                style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                onClick={() => downloadPdf(selected)}>
+                PDF
+              </Button>
+            )}
+            <Button
+              icon={<EditOutlined />}
+              onClick={() => { setDrawer(false); openEdit(selected) }}
+            >
+              Modifier
             </Button>
-          )
+          </Space>
         }
       >
         {selected && (

@@ -74,8 +74,6 @@ def update_bon(bc_id: int, data: BonCommandeUpdate, db: Session = Depends(get_db
     bc = db.query(BonCommande).filter(BonCommande.id == bc_id).first()
     if not bc:
         raise HTTPException(status_code=404, detail="Bon de commande introuvable")
-    if bc.statut != "brouillon":
-        raise HTTPException(status_code=400, detail="Seul un bon en statut 'brouillon' peut être modifié")
 
     if data.fournisseur_id is not None: bc.fournisseur_id = data.fournisseur_id
     if data.date is not None:           bc.date           = data.date
