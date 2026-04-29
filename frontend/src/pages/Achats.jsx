@@ -197,6 +197,17 @@ export default function Achats() {
     return false
   }
 
+  const removePdfFromBC = async (bc) => {
+    try {
+      const res = await api.put(`/bons-commande/${bc.id}`, { pdf_base64: null })
+      message.success('PDF supprimé')
+      setSelected(res.data)
+      fetchAll()
+    } catch {
+      message.error('Erreur lors de la suppression du PDF')
+    }
+  }
+
   const handlePdfUploadDirect = (file, bc) => {
     if (file.size > 5 * 1024 * 1024) {
       message.error('Le fichier PDF ne doit pas dépasser 5 Mo')
@@ -514,11 +525,19 @@ export default function Achats() {
               {/* PDF */}
               <div style={{ marginBottom: 20 }}>
                 {selected.pdf_base64 ? (
-                  <Button icon={<FilePdfOutlined />}
-                    onClick={() => downloadPdf(selected)}
-                    style={{ borderColor: '#fecaca', color: '#dc2626', background: '#fff5f5' }}>
-                    Télécharger le PDF joint
-                  </Button>
+                  <Space>
+                    <Button icon={<FilePdfOutlined />}
+                      onClick={() => downloadPdf(selected)}
+                      style={{ borderColor: '#fecaca', color: '#dc2626', background: '#fff5f5' }}>
+                      Télécharger le PDF joint
+                    </Button>
+                    <Popconfirm
+                      title="Supprimer le PDF joint ?"
+                      onConfirm={() => removePdfFromBC(selected)}
+                      okText="Oui" cancelText="Non" okButtonProps={{ danger: true }}>
+                      <Button icon={<DeleteOutlined />} danger size="small" />
+                    </Popconfirm>
+                  </Space>
                 ) : (
                   <Upload beforeUpload={(file) => handlePdfUploadDirect(file, selected)} accept=".pdf" maxCount={1} showUploadList={false}>
                     <Button icon={<UploadOutlined />} type="dashed" style={{ borderColor: '#cbd5e1', color: '#64748b' }}>
@@ -540,20 +559,27 @@ export default function Achats() {
                   const p = produits.find(pr => pr.id === l.produit_id)
                   const sousTotal = l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100)
                   return (
-                    <div key={l.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                    <div key={l.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {/* Badge quantité */}
+                      <div style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 10, background: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#fff', fontWeight: 700, fontSize: 16, lineHeight: 1 }}>{l.quantite}</span>
+                        <span style={{ color: '#94a3b8', fontSize: 9, fontWeight: 500, marginTop: 2 }}>unité{l.quantite > 1 ? 's' : ''}</span>
+                      </div>
+                      {/* Infos produit */}
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {p ? p.nom : `Produit #${l.produit_id}`}
                         </div>
                         <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 2 }}>
-                          {p?.reference && <span style={{ marginRight: 8 }}>{p.reference}</span>}
-                          {l.quantite} × {Number(l.prix_unitaire).toFixed(2)} MAD
+                          {p?.reference && <span style={{ marginRight: 6 }}>{p.reference} ·</span>}
+                          {Number(l.prix_unitaire).toFixed(2)} MAD / u.
                           {Number(l.remise || 0) > 0 && (
                             <span style={{ marginLeft: 8, color: '#f59e0b', fontWeight: 600 }}>−{Number(l.remise).toFixed(1)}%</span>
                           )}
                         </div>
                       </div>
-                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 14, whiteSpace: 'nowrap' }}>
+                      {/* Sous-total */}
+                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 14, whiteSpace: 'nowrap', textAlign: 'right' }}>
                         {sousTotal.toFixed(2)} MAD
                       </div>
                     </div>
