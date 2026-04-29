@@ -197,6 +197,27 @@ export default function Achats() {
     return false
   }
 
+  const handlePdfUploadDirect = (file, bc) => {
+    if (file.size > 5 * 1024 * 1024) {
+      message.error('Le fichier PDF ne doit pas dépasser 5 Mo')
+      return false
+    }
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const base64 = e.target.result.split(',')[1]
+      try {
+        const res = await api.put(`/bons-commande/${bc.id}`, { pdf_base64: base64 })
+        message.success('PDF ajouté')
+        setSelected(res.data)
+        fetchAll()
+      } catch {
+        message.error("Erreur lors de l'ajout du PDF")
+      }
+    }
+    reader.readAsDataURL(file)
+    return false
+  }
+
   const downloadPdf = (bc) => {
     const link = document.createElement('a')
     link.href = `data:application/pdf;base64,${bc.pdf_base64}`
@@ -420,108 +441,140 @@ export default function Achats() {
 
       {/* Drawer détail */}
       <Drawer
-        title={`Bon de commande #${selected?.id}`}
+        title={null}
         open={drawer}
         onClose={() => setDrawer(false)}
-        width={520}
-        extra={
-          <Space>
-            {selected?.pdf_base64 && (
-              <Button icon={<FilePdfOutlined />}
-                style={{ color: '#dc2626', borderColor: '#dc2626' }}
-                onClick={() => downloadPdf(selected)}>
-                PDF
-              </Button>
-            )}
-            <Button
-              icon={<EditOutlined />}
-              onClick={() => { setDrawer(false); openEdit(selected) }}
-            >
-              Modifier
-            </Button>
-          </Space>
-        }
+        width={560}
+        styles={{ body: { padding: 0 } }}
       >
         {selected && (
           <>
-            <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">Fournisseur</Text>
-                <Text strong>{fournisseurs.find(f => f.id === selected.fournisseur_id)?.nom}</Text>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">Date</Text>
-                <Text>{new Date(selected.date).toLocaleDateString('fr-FR')}</Text>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">Statut</Text>
-                <Badge status={statutColor[selected.statut]} text={statutLabel[selected.statut]} />
-              </div>
-              {selected.notes && (
+            {/* En-tête coloré */}
+            <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', padding: '24px 24px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <Text type="secondary">Notes</Text>
-                  <br />
-                  <Text>{selected.notes}</Text>
+                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Bon de commande
+                  </div>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', marginTop: 4, letterSpacing: '-0.5px' }}>
+                    #{String(selected.id).padStart(4, '0')}
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '3px 10px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: selected.statut === 'reçu' ? '#22c55e22' : selected.statut === 'envoyé' ? '#3b82f622' : '#ffffff22',
+                      color: selected.statut === 'reçu' ? '#86efac' : selected.statut === 'envoyé' ? '#93c5fd' : '#cbd5e1',
+                      border: `1px solid ${selected.statut === 'reçu' ? '#22c55e55' : selected.statut === 'envoyé' ? '#3b82f655' : '#ffffff33'}`,
+                    }}>
+                      {statutLabel[selected.statut]}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Total</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', marginTop: 4 }}>
+                    {totalBC(selected).toFixed(2)}
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>MAD</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Corps */}
+            <div style={{ padding: 24 }}>
+
+              {/* Infos principales */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 16px' }}>
+                  <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Fournisseur</div>
+                  <div style={{ fontWeight: 600, color: '#1e293b', marginTop: 6, fontSize: 14 }}>
+                    {fournisseurs.find(f => f.id === selected.fournisseur_id)?.nom || '—'}
+                  </div>
+                </div>
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 16px' }}>
+                  <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date</div>
+                  <div style={{ fontWeight: 600, color: '#1e293b', marginTop: 6, fontSize: 14 }}>
+                    {new Date(selected.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selected.notes && (
+                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
+                  <div style={{ color: '#92400e', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Notes</div>
+                  <div style={{ color: '#78350f', fontSize: 13 }}>{selected.notes}</div>
                 </div>
               )}
-            </Space>
 
-            <Divider />
-
-            {selected.lignes.length === 0 ? (
-              <Empty description="Aucune ligne" />
-            ) : (
-              <Table
-                size="small"
-                dataSource={selected.lignes}
-                rowKey="id"
-                pagination={false}
-                columns={[
-                  {
-                    title: 'Produit',
-                    dataIndex: 'produit_id',
-                    render: (id) => {
-                      const p = produits.find(p => p.id === id)
-                      return p ? `${p.reference} — ${p.nom}` : id
-                    },
-                  },
-                  { title: 'Qté', dataIndex: 'quantite', width: 55 },
-                  {
-                    title: 'Prix unit.',
-                    dataIndex: 'prix_unitaire',
-                    width: 100,
-                    render: (v) => `${Number(v).toFixed(2)} MAD`,
-                  },
-                  {
-                    title: 'Remise',
-                    dataIndex: 'remise',
-                    width: 70,
-                    render: (v) => Number(v || 0) > 0
-                      ? <Text type="warning">{Number(v).toFixed(1)}%</Text>
-                      : <Text type="secondary">—</Text>,
-                  },
-                  {
-                    title: 'Sous-total',
-                    width: 110,
-                    render: (_, l) => (
-                      <Text strong>
-                        {(l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100)).toFixed(2)} MAD
-                      </Text>
-                    ),
-                  },
-                ]}
-                summary={() => (
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell colSpan={3} align="right">
-                      <Text strong>Total</Text>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell>
-                      <Text strong type="danger">{totalBC(selected).toFixed(2)} MAD</Text>
-                    </Table.Summary.Cell>
-                  </Table.Summary.Row>
+              {/* PDF */}
+              <div style={{ marginBottom: 20 }}>
+                {selected.pdf_base64 ? (
+                  <Button icon={<FilePdfOutlined />}
+                    onClick={() => downloadPdf(selected)}
+                    style={{ borderColor: '#fecaca', color: '#dc2626', background: '#fff5f5' }}>
+                    Télécharger le PDF joint
+                  </Button>
+                ) : (
+                  <Upload beforeUpload={(file) => handlePdfUploadDirect(file, selected)} accept=".pdf" maxCount={1} showUploadList={false}>
+                    <Button icon={<UploadOutlined />} type="dashed" style={{ borderColor: '#cbd5e1', color: '#64748b' }}>
+                      Joindre un PDF à ce bon
+                    </Button>
+                  </Upload>
                 )}
-              />
-            )}
+              </div>
+
+              {/* Lignes */}
+              <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
+                  {selected.lignes.length} ligne{selected.lignes.length > 1 ? 's' : ''} de commande
+                </Text>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                {selected.lignes.map((l) => {
+                  const p = produits.find(pr => pr.id === l.produit_id)
+                  const sousTotal = l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100)
+                  return (
+                    <div key={l.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {p ? p.nom : `Produit #${l.produit_id}`}
+                        </div>
+                        <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 2 }}>
+                          {p?.reference && <span style={{ marginRight: 8 }}>{p.reference}</span>}
+                          {l.quantite} × {Number(l.prix_unitaire).toFixed(2)} MAD
+                          {Number(l.remise || 0) > 0 && (
+                            <span style={{ marginLeft: 8, color: '#f59e0b', fontWeight: 600 }}>−{Number(l.remise).toFixed(1)}%</span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 14, whiteSpace: 'nowrap' }}>
+                        {sousTotal.toFixed(2)} MAD
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Total bas */}
+              <div style={{ background: '#1e293b', borderRadius: 10, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <span style={{ color: '#94a3b8', fontWeight: 600, fontSize: 13 }}>Total TTC</span>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: 18 }}>{totalBC(selected).toFixed(2)} MAD</span>
+              </div>
+
+              {/* Bouton modifier */}
+              <Button icon={<EditOutlined />} block size="large"
+                onClick={() => { setDrawer(false); openEdit(selected) }}
+                style={{ borderColor: '#e2e8f0', color: '#1e293b', fontWeight: 600 }}>
+                Modifier ce bon de commande
+              </Button>
+
+            </div>
           </>
         )}
       </Drawer>
