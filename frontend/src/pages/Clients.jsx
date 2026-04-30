@@ -1,12 +1,12 @@
 import {
-  Table, Button, Input, Space, Tag, Typography, Modal, Form,
-  Drawer, Popconfirm, message, Tooltip, Switch, Empty, Card, Row, Col, Statistic, Divider
+  Table, Button, Input, Space, Tag, Typography, Modal, Form, Select,
+  Drawer, Popconfirm, message, Tooltip, Empty, Card, Row, Col, Statistic, Divider
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
   HistoryOutlined, UserOutlined, BankOutlined, PhoneOutlined,
   MailOutlined, EnvironmentOutlined, FileTextOutlined, CheckCircleOutlined,
-  ClockCircleOutlined, RiseOutlined, CopyOutlined,
+  ClockCircleOutlined, RiseOutlined, CopyOutlined, MedicineBoxOutlined, HeartOutlined,
 } from '@ant-design/icons'
 import { useEffect, useState, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -16,6 +16,21 @@ const { Title, Text } = Typography
 
 const statutColor = { brouillon: 'default', validé: 'processing', livré: 'success' }
 const statutLabel = { brouillon: 'Brouillon', validé: 'Validé', livré: 'Livré' }
+
+const TYPE_CLIENT = {
+  pharmacie:      { label: 'Pharmacie',      color: 'green',   icon: <MedicineBoxOutlined /> },
+  parapharmacie:  { label: 'Parapharmacie',  color: 'cyan',    icon: <MedicineBoxOutlined /> },
+  clinique:       { label: 'Clinique',       color: 'blue',    icon: <HeartOutlined /> },
+  hopital:        { label: 'Hôpital',        color: 'red',     icon: <BankOutlined /> },
+  particulier:    { label: 'Particulier',    color: 'default', icon: <UserOutlined /> },
+}
+
+const TypeTag = ({ type }) => {
+  const cfg = TYPE_CLIENT[type] || { label: type || '—', color: 'default', icon: null }
+  return <Tag icon={cfg.icon} color={cfg.color}>{cfg.label}</Tag>
+}
+
+const TYPE_OPTIONS = Object.entries(TYPE_CLIENT).map(([value, { label }]) => ({ value, label }))
 
 export default function Clients() {
   const location = useLocation()
@@ -28,7 +43,7 @@ export default function Clients() {
   const [modalOpen, setModalOpen]     = useState(false)
   const [editingClient, setEditing]   = useState(null)
   const [formLoading, setFormLoading] = useState(false)
-  const [particulier, setParticulier] = useState(false)
+  const [typeClient, setTypeClient]   = useState('pharmacie')
 
   const [drawer, setDrawer]             = useState(false)
   const [drawerClient, setDrawerClient] = useState(null)
@@ -65,8 +80,9 @@ export default function Clients() {
 
   const openAdd = () => {
     setEditing(null)
-    setParticulier(false)
+    setTypeClient('pharmacie')
     form.resetFields()
+    form.setFieldValue('type_client', 'pharmacie')
     setModalOpen(true)
   }
 
@@ -79,15 +95,15 @@ export default function Clients() {
 
   const openEdit = (client) => {
     setEditing(client)
-    setParticulier(client.particulier)
+    setTypeClient(client.type_client || 'pharmacie')
     form.setFieldsValue(client)
     setModalOpen(true)
   }
 
   const handleSave = async (values) => {
     setFormLoading(true)
-    const payload = { ...values, particulier: values.particulier ?? false }
-    if (payload.particulier) payload.ice = null
+    const payload = { ...values }
+    if (payload.type_client === 'particulier') payload.ice = null
     try {
       if (editingClient) {
         await api.put(`/clients/${editingClient.id}`, payload)
@@ -132,12 +148,10 @@ export default function Clients() {
   const columns = [
     {
       title: 'Type',
-      dataIndex: 'particulier',
-      key: 'particulier',
-      width: 110,
-      render: (v) => v
-        ? <Tag icon={<UserOutlined />} color="blue">Particulier</Tag>
-        : <Tag icon={<BankOutlined />} color="geekblue">Entreprise</Tag>,
+      dataIndex: 'type_client',
+      key: 'type_client',
+      width: 120,
+      render: (v) => <TypeTag type={v} />,
     },
     {
       title: 'Nom / Société',
@@ -345,20 +359,23 @@ export default function Clients() {
         width={520}
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 16 }}>
-          <Form.Item name="particulier" label="Type de client" valuePropName="checked" initialValue={false}>
-            <Switch
-              checkedChildren="Particulier"
-              unCheckedChildren="Entreprise"
-              onChange={(v) => { setParticulier(v); if (v) form.setFieldValue('ice', null) }}
+          <Form.Item name="type_client" label="Type de client" rules={[{ required: true, message: 'Type requis' }]}>
+            <Select
+              options={TYPE_OPTIONS}
+              onChange={(v) => {
+                setTypeClient(v)
+                if (v === 'particulier') form.setFieldValue('ice', null)
+              }}
+              placeholder="Sélectionner un type"
             />
           </Form.Item>
 
           <Form.Item name="nom" label="Nom / Société" rules={[{ required: true, message: 'Nom requis' }]}>
-            <Input placeholder="Ex : SARL Dupont" />
+            <Input placeholder="Ex : Pharmacie Centrale" />
           </Form.Item>
 
           <Form.Item name="contact" label="Nom du contact">
-            <Input placeholder="Ex : Jean Dupont" />
+            <Input placeholder="Ex : Dr. Alaoui" />
           </Form.Item>
 
           <Form.Item name="telephone" label="Téléphone">
@@ -366,14 +383,14 @@ export default function Clients() {
           </Form.Item>
 
           <Form.Item name="mail" label="Email">
-            <Input placeholder="Ex : contact@societe.ma" />
+            <Input placeholder="Ex : contact@pharmacie.ma" />
           </Form.Item>
 
           <Form.Item name="adresse" label="Adresse">
-            <Input placeholder="Ex : 12 rue des Acacias, Casablanca" />
+            <Input placeholder="Ex : 12 avenue Hassan II, Casablanca" />
           </Form.Item>
 
-          {!particulier && (
+          {typeClient !== 'particulier' && (
             <Form.Item name="ice" label="ICE">
               <Input placeholder="Ex : 001234567000012" maxLength={15} />
             </Form.Item>
@@ -385,15 +402,16 @@ export default function Clients() {
       <Drawer
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {drawerClient?.particulier
-                ? <UserOutlined style={{ color: '#fff', fontSize: 16 }} />
-                : <BankOutlined style={{ color: '#fff', fontSize: 16 }} />}
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+              {(() => {
+                const cfg = TYPE_CLIENT[drawerClient?.type_client]
+                return cfg ? <span style={{ color: '#fff' }}>{cfg.icon}</span> : <UserOutlined style={{ color: '#fff' }} />
+              })()}
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3 }}>{drawerClient?.nom}</div>
               <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
-                {drawerClient?.particulier ? 'Particulier' : 'Entreprise'}
+                {TYPE_CLIENT[drawerClient?.type_client]?.label || '—'}
                 {drawerClient?.ice ? ` · ICE ${drawerClient.ice}` : ''}
               </div>
             </div>

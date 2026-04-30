@@ -8,6 +8,7 @@ class Client(Base):
     id          = Column(Integer, primary_key=True, index=True)
     nom         = Column(String, nullable=False)
     contact     = Column(String, nullable=True)
+    type_client = Column(String, nullable=True)   # pharmacie | clinique | hopital | particulier
     particulier = Column(Boolean, nullable=False, default=False)
     telephone   = Column(String, nullable=True)
     adresse     = Column(String, nullable=True)
