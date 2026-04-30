@@ -406,15 +406,18 @@ export default function Achats() {
           </div>
 
           {lignes.map((ligne, idx) => (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '3fr 70px 130px 100px 120px 32px', gap: 8, marginBottom: 10, alignItems: 'center' }}>
-              <Select
-                placeholder="Produit"
-                value={ligne.produit_id}
-                onChange={(v) => updateLigne(idx, 'produit_id', v)}
-                options={produits.map(p => ({ value: p.id, label: `${p.reference} — ${p.nom}` }))}
-                showSearch
-                filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
-              />
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '3fr 70px 130px 100px 120px 32px', gap: 8, marginBottom: 10, alignItems: 'center', minWidth: 0 }}>
+              <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                <Select
+                  placeholder="Produit"
+                  value={ligne.produit_id}
+                  onChange={(v) => updateLigne(idx, 'produit_id', v)}
+                  options={produits.map(p => ({ value: p.id, label: `${p.reference} — ${p.nom}` }))}
+                  showSearch
+                  filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
+                  style={{ width: '100%' }}
+                />
+              </div>
               <InputNumber
                 min={1} value={ligne.quantite}
                 onChange={(v) => updateLigne(idx, 'quantite', v)}
@@ -560,11 +563,6 @@ export default function Achats() {
                   const sousTotal = l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100)
                   return (
                     <div key={l.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {/* Badge quantité */}
-                      <div style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 10, background: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#fff', fontWeight: 700, fontSize: 16, lineHeight: 1 }}>{l.quantite}</span>
-                        <span style={{ color: '#94a3b8', fontSize: 9, fontWeight: 500, marginTop: 2 }}>unité{l.quantite > 1 ? 's' : ''}</span>
-                      </div>
                       {/* Infos produit */}
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -578,8 +576,13 @@ export default function Achats() {
                           )}
                         </div>
                       </div>
+                      {/* Badge quantité */}
+                      <div style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 10, background: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#fff', fontWeight: 700, fontSize: 16, lineHeight: 1 }}>{l.quantite}</span>
+                        <span style={{ color: '#94a3b8', fontSize: 9, fontWeight: 500, marginTop: 2 }}>unité{l.quantite > 1 ? 's' : ''}</span>
+                      </div>
                       {/* Sous-total */}
-                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 14, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: 14, whiteSpace: 'nowrap', textAlign: 'right', minWidth: 90 }}>
                         {sousTotal.toFixed(2)} MAD
                       </div>
                     </div>

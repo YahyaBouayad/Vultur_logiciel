@@ -1,38 +1,45 @@
 import {
   Table, Button, Input, Space, Tag, Typography, Modal, Form,
-  InputNumber, Drawer, Timeline, Popconfirm, message, Tooltip
+  InputNumber, Drawer, Timeline, Popconfirm, message, Tooltip,
+  Card, Row, Col, Statistic, Segmented
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
-  PlusCircleOutlined, HistoryOutlined
+  PlusCircleOutlined, HistoryOutlined, BellOutlined,
+  ExclamationCircleOutlined, WarningOutlined, EyeInvisibleOutlined,
+  AppstoreOutlined, RiseOutlined,
 } from '@ant-design/icons'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import api from '../api/axios'
 
 const { Title, Text } = Typography
 
-function stockTag(stock) {
-  if (stock === 0) return <Tag color="error">Rupture</Tag>
-  if (stock <= 5)  return <Tag color="warning">{stock}</Tag>
-  return <Tag color="success">{stock}</Tag>
+const SEUIL = 5
+
+function stockTag(stock, ignoree) {
+  if (ignoree)      return <Tag color="default"   style={{ fontWeight: 500 }}>{stock} — ignoré</Tag>
+  if (stock === 0)  return <Tag color="error"     style={{ fontWeight: 600 }}>Rupture</Tag>
+  if (stock <= SEUIL) return <Tag color="warning" style={{ fontWeight: 600 }}>{stock}</Tag>
+  return               <Tag color="success"       style={{ fontWeight: 600 }}>{stock}</Tag>
 }
 
 export default function Produits() {
-  const [produits, setProduits]         = useState([])
-  const [filtered, setFiltered]         = useState([])
-  const [loading, setLoading]           = useState(false)
-  const [search, setSearch]             = useState('')
+  const [produits, setProduits]           = useState([])
+  const [filtered, setFiltered]           = useState([])
+  const [loading, setLoading]             = useState(false)
+  const [search, setSearch]               = useState('')
+  const [filtre, setFiltre]               = useState('all')
 
-  const [modalOpen, setModalOpen]       = useState(false)
-  const [editingProduit, setEditing]    = useState(null)
-  const [formLoading, setFormLoading]   = useState(false)
+  const [modalOpen, setModalOpen]         = useState(false)
+  const [editingProduit, setEditing]      = useState(null)
+  const [formLoading, setFormLoading]     = useState(false)
 
-  const [stockModal, setStockModal]     = useState(false)
-  const [stockProduit, setStockProduit] = useState(null)
-  const [stockForm]                     = Form.useForm()
+  const [stockModal, setStockModal]       = useState(false)
+  const [stockProduit, setStockProduit]   = useState(null)
+  const [stockForm]                       = Form.useForm()
 
-  const [drawer, setDrawer]             = useState(false)
-  const [mouvements, setMouvements]     = useState([])
+  const [drawer, setDrawer]               = useState(false)
+  const [mouvements, setMouvements]       = useState([])
   const [drawerProduit, setDrawerProduit] = useState(null)
 
   const [form] = Form.useForm()
@@ -42,7 +49,6 @@ export default function Produits() {
     try {
       const res = await api.get('/produits')
       setProduits(res.data)
-      setFiltered(res.data)
     } finally {
       setLoading(false)
     }
@@ -50,12 +56,27 @@ export default function Produits() {
 
   useEffect(() => { fetchProduits() }, [])
 
+  const kpis = useMemo(() => {
+    const actifs = produits.filter(p => !p.alerte_ignoree)
+    return {
+      total:       produits.length,
+      rupture:     actifs.filter(p => p.stock === 0).length,
+      faible:      actifs.filter(p => p.stock > 0 && p.stock <= SEUIL).length,
+      ignoree:     produits.filter(p => p.alerte_ignoree).length,
+      valeurStock: produits.reduce((s, p) => s + p.stock * Number(p.prix), 0),
+    }
+  }, [produits])
+
   useEffect(() => {
     const q = search.toLowerCase()
-    setFiltered(produits.filter(p =>
+    let base = produits.filter(p =>
       p.nom.toLowerCase().includes(q) || p.reference.toLowerCase().includes(q)
-    ))
-  }, [search, produits])
+    )
+    if (filtre === 'rupture') base = base.filter(p => p.stock === 0 && !p.alerte_ignoree)
+    if (filtre === 'faible')  base = base.filter(p => p.stock > 0 && p.stock <= SEUIL && !p.alerte_ignoree)
+    if (filtre === 'ignore')  base = base.filter(p => p.alerte_ignoree)
+    setFiltered(base)
+  }, [search, produits, filtre])
 
   const openAdd = () => {
     setEditing(null)
@@ -95,6 +116,16 @@ export default function Produits() {
       fetchProduits()
     } catch (e) {
       message.error(e.response?.data?.detail || 'Erreur')
+    }
+  }
+
+  const toggleIgnore = async (produit) => {
+    try {
+      await api.put(`/produits/${produit.id}`, { alerte_ignoree: !produit.alerte_ignoree })
+      message.success(produit.alerte_ignoree ? 'Alerte réactivée' : 'Alerte de rupture ignorée')
+      fetchProduits()
+    } catch {
+      message.error('Erreur')
     }
   }
 
@@ -146,52 +177,50 @@ export default function Produits() {
       title: 'Prix',
       dataIndex: 'prix',
       key: 'prix',
-      width: 120,
+      width: 130,
+      sorter: (a, b) => Number(a.prix) - Number(b.prix),
       render: (v) => <Text strong>{Number(v).toFixed(2)} MAD</Text>,
     },
     {
       title: 'Stock',
       dataIndex: 'stock',
       key: 'stock',
-      width: 100,
-      render: (v) => stockTag(v),
+      width: 130,
+      sorter: (a, b) => a.stock - b.stock,
+      render: (v, r) => stockTag(v, r.alerte_ignoree),
     },
     {
       title: 'Actions',
       key: 'actions',
-      width: 160,
+      width: 190,
       render: (_, record) => (
-        <Space>
+        <Space size={4}>
           <Tooltip title="Entrée de stock">
-            <Button
-              icon={<PlusCircleOutlined />}
-              size="small"
-              type="primary"
-              ghost
-              onClick={() => openStockModal(record)}
-            />
+            <Button icon={<PlusCircleOutlined />} size="small" type="primary" ghost
+              onClick={() => openStockModal(record)} />
           </Tooltip>
-          <Tooltip title="Historique">
-            <Button
-              icon={<HistoryOutlined />}
-              size="small"
-              onClick={() => openDrawer(record)}
-            />
+          <Tooltip title="Historique mouvements">
+            <Button icon={<HistoryOutlined />} size="small"
+              onClick={() => openDrawer(record)} />
           </Tooltip>
           <Tooltip title="Modifier">
+            <Button icon={<EditOutlined />} size="small"
+              onClick={() => openEdit(record)} />
+          </Tooltip>
+          <Tooltip title={record.alerte_ignoree ? 'Réactiver l\'alerte rupture' : 'Ignorer l\'alerte rupture'}>
             <Button
-              icon={<EditOutlined />}
+              icon={record.alerte_ignoree ? <BellOutlined /> : <EyeInvisibleOutlined />}
               size="small"
-              onClick={() => openEdit(record)}
+              onClick={() => toggleIgnore(record)}
+              style={record.alerte_ignoree
+                ? { color: '#10b981', borderColor: '#10b981' }
+                : { color: '#94a3b8', borderColor: '#e2e8f0' }}
             />
           </Tooltip>
           <Tooltip title="Supprimer">
-            <Popconfirm
-              title="Supprimer ce produit ?"
+            <Popconfirm title="Supprimer ce produit ?"
               onConfirm={() => handleDelete(record.id)}
-              okText="Oui"
-              cancelText="Non"
-            >
+              okText="Oui" cancelText="Non">
               <Button icon={<DeleteOutlined />} size="small" danger />
             </Popconfirm>
           </Tooltip>
@@ -210,26 +239,86 @@ export default function Produits() {
         </Button>
       </div>
 
+      {/* KPIs */}
+      <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #3b82f6' }}>
+            <Statistic
+              title={<span style={{ fontSize: 12 }}>Total produits</span>}
+              value={kpis.total}
+              valueStyle={{ fontSize: 24, fontWeight: 700, color: '#3b82f6' }}
+              prefix={<AppstoreOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ borderRadius: 10, borderTop: `3px solid ${kpis.rupture > 0 ? '#ef4444' : '#e2e8f0'}` }}>
+            <Statistic
+              title={<span style={{ fontSize: 12 }}>En rupture</span>}
+              value={kpis.rupture}
+              valueStyle={{ fontSize: 24, fontWeight: 700, color: kpis.rupture > 0 ? '#ef4444' : '#94a3b8' }}
+              prefix={<ExclamationCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ borderRadius: 10, borderTop: `3px solid ${kpis.faible > 0 ? '#f59e0b' : '#e2e8f0'}` }}>
+            <Statistic
+              title={<span style={{ fontSize: 12 }}>Stock faible (≤ {SEUIL})</span>}
+              value={kpis.faible}
+              valueStyle={{ fontSize: 24, fontWeight: 700, color: kpis.faible > 0 ? '#f59e0b' : '#94a3b8' }}
+              prefix={<WarningOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #8b5cf6' }}>
+            <Statistic
+              title={<span style={{ fontSize: 12 }}>Valeur stock</span>}
+              value={kpis.valeurStock.toFixed(0)}
+              suffix="MAD"
+              valueStyle={{ fontSize: 20, fontWeight: 700, color: '#8b5cf6' }}
+              prefix={<RiseOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       <div style={{ background: '#fff', borderRadius: 10, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <Input
-          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-          placeholder="Rechercher par nom ou référence..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ maxWidth: 320, marginBottom: 16 }}
-          allowClear
-        />
+        {/* Barre recherche + filtres */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Input
+            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+            placeholder="Rechercher par nom ou référence..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ maxWidth: 300 }}
+            allowClear
+          />
+          <Segmented
+            value={filtre}
+            onChange={setFiltre}
+            options={[
+              { label: `Tous (${produits.length})`,       value: 'all' },
+              { label: `Rupture (${kpis.rupture})`,       value: 'rupture' },
+              { label: `Stock faible (${kpis.faible})`,   value: 'faible' },
+              { label: `Ignorés (${kpis.ignoree})`,       value: 'ignore' },
+            ]}
+          />
+        </div>
+
         <Table
           columns={columns}
           dataSource={filtered}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10, showTotal: (t) => `${t} produit(s)` }}
-          locale={{ emptyText: 'Aucun produit enregistré' }}
+          pagination={{ pageSize: 15, showTotal: (t) => `${t} produit(s)` }}
+          locale={{ emptyText: 'Aucun produit dans cette catégorie' }}
+          rowClassName={(r) => r.stock === 0 && !r.alerte_ignoree ? 'row-rupture' : ''}
         />
       </div>
 
-      {/* Modale Ajouter / Modifier */}
+      {/* Modal Ajouter / Modifier */}
       <Modal
         title={editingProduit ? 'Modifier le produit' : 'Nouveau produit'}
         open={modalOpen}
@@ -241,10 +330,10 @@ export default function Produits() {
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 16 }}>
           <Form.Item name="nom" label="Nom" rules={[{ required: true, message: 'Nom requis' }]}>
-            <Input placeholder="Ex : Câble HDMI" />
+            <Input placeholder="Ex : Amoxicilline 500mg" />
           </Form.Item>
           <Form.Item name="reference" label="Référence" rules={[{ required: true, message: 'Référence requise' }]}>
-            <Input placeholder="Ex : CAB-HDMI-001" />
+            <Input placeholder="Ex : AMX-500" />
           </Form.Item>
           <Form.Item name="prix" label="Prix de vente (MAD)" rules={[{ required: true, message: 'Prix requis' }]}>
             <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="0.00" />
@@ -257,7 +346,7 @@ export default function Produits() {
         </Form>
       </Modal>
 
-      {/* Modale Entrée de stock */}
+      {/* Modal Entrée de stock */}
       <Modal
         title={`Entrée de stock — ${stockProduit?.nom}`}
         open={stockModal}
@@ -268,7 +357,8 @@ export default function Produits() {
         confirmLoading={formLoading}
       >
         <Form form={stockForm} layout="vertical" onFinish={handleEntreeStock} style={{ marginTop: 16 }}>
-          <Form.Item name="quantite" label="Quantité à ajouter" rules={[{ required: true, message: 'Quantité requise' }]}>
+          <Form.Item name="quantite" label="Quantité à ajouter"
+            rules={[{ required: true, message: 'Quantité requise' }]}>
             <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
@@ -290,7 +380,7 @@ export default function Produits() {
               children: (
                 <div>
                   <Text strong style={{ color: m.type === 'entrée' ? '#10b981' : '#ef4444' }}>
-                    {m.type === 'entrée' ? '+' : '-'}{m.quantite} unités
+                    {m.type === 'entrée' ? '+' : '−'}{m.quantite} unités
                   </Text>
                   <br />
                   <Text type="secondary" style={{ fontSize: 12 }}>

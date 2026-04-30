@@ -9,6 +9,7 @@ Base.metadata.create_all(bind=engine)
 
 # Migrations inline — ajoute les colonnes manquantes sur les tables existantes
 with engine.connect() as _conn:
+    _conn.execute(text("ALTER TABLE produits ADD COLUMN IF NOT EXISTS alerte_ignoree BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS type_client VARCHAR"))
     _conn.execute(text("UPDATE clients SET type_client = 'particulier' WHERE particulier = TRUE  AND type_client IS NULL"))
     _conn.execute(text("UPDATE clients SET type_client = 'pharmacie'   WHERE particulier = FALSE AND type_client IS NULL"))
