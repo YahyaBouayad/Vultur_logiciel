@@ -1,6 +1,6 @@
-import { Card, Col, Row, Statistic, Typography, Select, Alert, Progress, Tag, Table, Button } from 'antd'
+import { Card, Col, Divider, Row, Segmented, Statistic, Typography, Select, Alert, Progress, Tag, Table, Button } from 'antd'
 import {
-  ArrowUpOutlined, FileTextOutlined, TeamOutlined, WarningOutlined,
+  ArrowUpOutlined, ArrowDownOutlined, FileTextOutlined, TeamOutlined, WarningOutlined,
   PlusOutlined, UserAddOutlined, InboxOutlined, RightOutlined,
   ExclamationCircleOutlined, AppstoreOutlined, CalendarOutlined, EyeOutlined,
 } from '@ant-design/icons'
@@ -82,7 +82,6 @@ function buildChartData(bons, periode) {
     })
   }
 
-  // 1an
   return Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1)
     const ca = bons
@@ -94,10 +93,11 @@ function buildChartData(bons, periode) {
 
 export default function Dashboard() {
   const [chartPeriode, setChartPeriode] = useState('6m')
-  const [bons, setBons]       = useState([])
-  const [produits, setProduits] = useState([])
-  const [clients, setClients]   = useState([])
-  const [factures, setFactures] = useState([])
+  const [blPeriode, setBlPeriode]       = useState('mois')
+  const [bons, setBons]                 = useState([])
+  const [produits, setProduits]         = useState([])
+  const [clients, setClients]           = useState([])
+  const [factures, setFactures]         = useState([])
   const { impayes } = useImpayes()
   const navigate = useNavigate()
 
@@ -117,13 +117,31 @@ export default function Dashboard() {
       .catch(() => setFactures([]))
   }, [])
 
-  // KPI Row 1
-  const revenusTotal = useMemo(() => {
-    const fromFactures      = factures.filter(f => f.statut === 'payée').reduce((s, f) => s + (f.montant_ht || 0), 0)
-    const fromArrangements  = bons.filter(b => b.encaisse && !b.facture_id).reduce((s, b) => s + totalBL(b), 0)
-    return fromFactures + fromArrangements
-  }, [factures, bons])
+  // ── CA mois en cours vs mois précédent ──────────────────────────────────
+  const caMonthCurrent = useMemo(() => {
+    const n = new Date()
+    return bons
+      .filter(b => {
+        const d = new Date(b.date)
+        return b.statut === 'livré' && d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear()
+      })
+      .reduce((s, b) => s + totalBL(b), 0)
+  }, [bons])
 
+  const caMonthPrev = useMemo(() => {
+    const n = new Date()
+    const prev = new Date(n.getFullYear(), n.getMonth() - 1, 1)
+    return bons
+      .filter(b => {
+        const d = new Date(b.date)
+        return b.statut === 'livré' && d.getMonth() === prev.getMonth() && d.getFullYear() === prev.getFullYear()
+      })
+      .reduce((s, b) => s + totalBL(b), 0)
+  }, [bons])
+
+  const caVariation = caMonthPrev > 0 ? ((caMonthCurrent - caMonthPrev) / caMonthPrev * 100) : null
+
+  // ── KPI Row 1 ────────────────────────────────────────────────────────────
   const facturesImpayes = useMemo(() => factures.filter(f => f.statut === 'émise'), [factures])
   const sommeImpayes    = useMemo(() => facturesImpayes.reduce((s, f) => s + (f.montant_ht || 0), 0), [facturesImpayes])
 
@@ -132,18 +150,57 @@ export default function Dashboard() {
     return ids.size
   }, [bons])
 
-  // KPI Row 2
-  const prodRupture = useMemo(() => produits.filter(p => p.stock === 0), [produits])
-  const prodAlerte  = useMemo(() => produits.filter(p => p.stock > 0 && p.stock <= 5), [produits])
+  // ── KPI Row 2 ────────────────────────────────────────────────────────────
+  const prodRupture        = useMemo(() => produits.filter(p => p.stock === 0 && !p.alerte_ignoree), [produits])
+  const prodAlerte         = useMemo(() => produits.filter(p => p.stock > 0 && p.stock <= 5 && !p.alerte_ignoree), [produits])
+  const produitsAlerteList = useMemo(() => [...prodRupture, ...prodAlerte], [prodRupture, prodAlerte])
 
   const blEnCours = useMemo(() => bons.filter(b => b.statut === 'brouillon' || b.statut === 'validé').length, [bons])
   const blLivres  = useMemo(() => bons.filter(b => b.statut === 'livré').length, [bons])
 
-  const statutsBL = useMemo(() => ({
-    brouillon: bons.filter(b => b.statut === 'brouillon').length,
-    valide:    bons.filter(b => b.statut === 'validé').length,
-    livre:     bons.filter(b => b.statut === 'livré').length,
-  }), [bons])
+  // ── BL filtrés par période (card statuts + non facturés) ─────────────────
+  const bonsFiltresPeriode = useMemo(() => {
+    const n = new Date()
+    if (blPeriode === 'semaine') {
+      const start = new Date(n)
+      start.setDate(n.getDate() - 6)
+      start.setHours(0, 0, 0, 0)
+      return bons.filter(b => new Date(b.date) >= start)
+    }
+    if (blPeriode === 'mois') {
+      return bons.filter(b => {
+        const d = new Date(b.date)
+        return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear()
+      })
+    }
+    return bons
+  }, [bons, blPeriode])
+
+  const statutsBLPeriode = useMemo(() => {
+    const total = bonsFiltresPeriode.length
+    return {
+      brouillon: bonsFiltresPeriode.filter(b => b.statut === 'brouillon').length,
+      valide:    bonsFiltresPeriode.filter(b => b.statut === 'validé').length,
+      livre:     bonsFiltresPeriode.filter(b => b.statut === 'livré').length,
+      total,
+    }
+  }, [bonsFiltresPeriode])
+
+  const blLivresNonFactures = useMemo(() => {
+    const facturesBLIds = new Set(factures.filter(f => f.statut !== 'annulée').map(f => f.bon_livraison_id))
+    return bonsFiltresPeriode.filter(b => b.statut === 'livré' && !facturesBLIds.has(b.id) && !b.encaisse)
+  }, [bonsFiltresPeriode, factures])
+
+  const montantNonFacture = useMemo(
+    () => blLivresNonFactures.reduce((s, b) => s + totalBL(b), 0),
+    [blLivresNonFactures],
+  )
+
+  // ── Derniers BL triés par date desc ──────────────────────────────────────
+  const derniersBL = useMemo(
+    () => [...bons].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5),
+    [bons],
+  )
 
   const chartData = useMemo(() => buildChartData(bons, chartPeriode), [bons, chartPeriode])
 
@@ -156,13 +213,11 @@ export default function Dashboard() {
   ]
 
   const actionCards = [
-    { icon: <PlusOutlined style={{ fontSize: 22 }} />,     title: 'Nouveau BL',       color: '#3b82f6', bg: '#eff6ff', action: () => navigate('/bons-livraison', { state: { openAdd: true } }) },
+    { icon: <PlusOutlined style={{ fontSize: 22 }} />,     title: 'Nouveau BL',        color: '#3b82f6', bg: '#eff6ff', action: () => navigate('/bons-livraison', { state: { openAdd: true } }) },
     { icon: <UserAddOutlined style={{ fontSize: 22 }} />,  title: 'Ajouter un client', color: '#10b981', bg: '#f0fdf4', action: () => navigate('/clients', { state: { openAdd: true } }) },
     { icon: <InboxOutlined style={{ fontSize: 22 }} />,    title: 'Vérifier le stock', color: '#f59e0b', bg: '#fffbeb', action: () => navigate('/produits') },
     { icon: <FileTextOutlined style={{ fontSize: 22 }} />, title: 'Voir les factures', color: '#8b5cf6', bg: '#f5f3ff', action: () => navigate('/factures') },
   ]
-
-  const derniersBL = useMemo(() => bons.slice(0, 5), [bons])
 
   const nbAlertesRetard = impayes.filter(i => i.niveau === 'retard' || i.niveau === 'critique').length
 
@@ -214,8 +269,12 @@ export default function Dashboard() {
     },
   ]
 
+  const moisNomCurrent = MOIS_LONG[new Date().getMonth()]
+  const moisNomPrev    = MOIS_LONG[new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).getMonth()]
+
   return (
     <div>
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <Title level={4} style={{ margin: 0, color: '#1e293b' }}>{getSalutation()} 👋</Title>
@@ -244,18 +303,51 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Actions rapides */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+        {actionCards.map((card, i) => (
+          <Col xs={24} sm={12} lg={6} key={i}>
+            <Card
+              hoverable
+              onClick={card.action}
+              style={{
+                borderRadius: 10,
+                cursor: 'pointer',
+                background: card.bg,
+                border: `1px solid ${card.color}33`,
+              }}
+              styles={{ body: { padding: '14px 20px' } }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ color: card.color }}>{card.icon}</div>
+                  <Text strong style={{ fontSize: 14, color: '#1e293b' }}>{card.title}</Text>
+                </div>
+                <RightOutlined style={{ color: card.color, fontSize: 11 }} />
+              </div>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
       {/* KPI Row 1 */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12} lg={6}>
           <Card style={{ borderRadius: 10, borderTop: '3px solid #10b981' }}>
             <Statistic
-              title="Revenu total"
-              value={revenusTotal.toFixed(2)}
+              title={`CA — ${moisNomCurrent.charAt(0).toUpperCase() + moisNomCurrent.slice(1)}`}
+              value={caMonthCurrent.toFixed(2)}
               suffix="MAD"
               valueStyle={{ color: '#10b981', fontWeight: 700 }}
-              prefix={<ArrowUpOutlined />}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>Factures payées</Text>
+            {caVariation !== null ? (
+              <Text style={{ fontSize: 12, color: caVariation >= 0 ? '#10b981' : '#ef4444' }}>
+                {caVariation >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                {' '}{Math.abs(caVariation).toFixed(1)}% vs {moisNomPrev}
+              </Text>
+            ) : (
+              <Text type="secondary" style={{ fontSize: 12 }}>Pas de données le mois précédent</Text>
+            )}
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
@@ -314,32 +406,75 @@ export default function Dashboard() {
             <Text type="secondary" style={{ fontSize: 12 }}>{blLivres} BL livré{blLivres !== 1 ? 's' : ''} au total</Text>
           </Card>
         </Col>
+
+        {/* Alertes stock avec mini-liste */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{ borderRadius: 10, borderTop: `3px solid ${prodRupture.length > 0 ? '#ef4444' : '#f59e0b'}`, cursor: 'pointer' }}
-            onClick={() => navigate('/produits')}
-            hoverable
-          >
-            <Statistic
-              title="Alertes stock"
-              value={prodRupture.length + prodAlerte.length}
-              valueStyle={{ color: prodRupture.length > 0 ? '#ef4444' : '#f59e0b', fontWeight: 700 }}
-              prefix={<WarningOutlined />}
-            />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {prodRupture.length} rupture{prodRupture.length !== 1 ? 's' : ''} · {prodAlerte.length} alerte{prodAlerte.length !== 1 ? 's' : ''}
-            </Text>
+          <Card style={{ borderRadius: 10, borderTop: `3px solid ${produitsAlerteList.length > 0 ? '#ef4444' : '#10b981'}` }}>
+            <div
+              style={{ cursor: produitsAlerteList.length === 0 ? 'pointer' : 'default' }}
+              onClick={produitsAlerteList.length === 0 ? () => navigate('/produits') : undefined}
+            >
+              <Statistic
+                title="Alertes stock"
+                value={produitsAlerteList.length}
+                valueStyle={{ color: produitsAlerteList.length > 0 ? '#ef4444' : '#10b981', fontWeight: 700 }}
+                prefix={<WarningOutlined />}
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {prodRupture.length} rupture{prodRupture.length !== 1 ? 's' : ''} · {prodAlerte.length} alerte{prodAlerte.length !== 1 ? 's' : ''}
+              </Text>
+            </div>
+            {produitsAlerteList.length > 0 && (
+              <div style={{ marginTop: 10, borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
+                {produitsAlerteList.slice(0, 3).map(p => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>
+                      {p.nom}
+                    </Text>
+                    {p.stock === 0
+                      ? <Tag color="error"   style={{ fontSize: 10, margin: 0, padding: '0 4px' }}>Rupture</Tag>
+                      : <Tag color="warning" style={{ fontSize: 10, margin: 0, padding: '0 4px' }}>{p.stock}</Tag>
+                    }
+                  </div>
+                ))}
+                {produitsAlerteList.length > 3 && (
+                  <a
+                    onClick={() => navigate('/produits')}
+                    style={{ fontSize: 11, color: '#64748b', display: 'block', marginTop: 4 }}
+                  >
+                    +{produitsAlerteList.length - 3} autres →
+                  </a>
+                )}
+              </div>
+            )}
           </Card>
         </Col>
+
+        {/* Statuts BL + non facturés avec filtre période */}
         <Col xs={24} lg={12}>
-          <Card title="Statuts des bons de livraison" style={{ borderRadius: 10 }}>
+          <Card
+            title="Bons de livraison"
+            style={{ borderRadius: 10 }}
+            extra={
+              <Segmented
+                size="small"
+                options={[
+                  { value: 'semaine', label: '7 j' },
+                  { value: 'mois',    label: 'Mois' },
+                  { value: 'tout',    label: 'Tout' },
+                ]}
+                value={blPeriode}
+                onChange={setBlPeriode}
+              />
+            }
+          >
             <div style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                 <Text style={{ fontSize: 12, color: '#64748b' }}>Brouillon</Text>
-                <Text style={{ fontSize: 12, fontWeight: 600 }}>{statutsBL.brouillon}</Text>
+                <Text style={{ fontSize: 12, fontWeight: 600 }}>{statutsBLPeriode.brouillon}</Text>
               </div>
               <Progress
-                percent={bons.length ? Math.round(statutsBL.brouillon / bons.length * 100) : 0}
+                percent={statutsBLPeriode.total ? Math.round(statutsBLPeriode.brouillon / statutsBLPeriode.total * 100) : 0}
                 showInfo={false}
                 strokeColor="#94a3b8"
                 size="small"
@@ -348,27 +483,51 @@ export default function Dashboard() {
             <div style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                 <Text style={{ fontSize: 12, color: '#3b82f6' }}>Validé</Text>
-                <Text style={{ fontSize: 12, fontWeight: 600 }}>{statutsBL.valide}</Text>
+                <Text style={{ fontSize: 12, fontWeight: 600 }}>{statutsBLPeriode.valide}</Text>
               </div>
               <Progress
-                percent={bons.length ? Math.round(statutsBL.valide / bons.length * 100) : 0}
+                percent={statutsBLPeriode.total ? Math.round(statutsBLPeriode.valide / statutsBLPeriode.total * 100) : 0}
                 showInfo={false}
                 strokeColor="#3b82f6"
                 size="small"
               />
             </div>
-            <div>
+            <div style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                 <Text style={{ fontSize: 12, color: '#10b981' }}>Livré</Text>
-                <Text style={{ fontSize: 12, fontWeight: 600 }}>{statutsBL.livre}</Text>
+                <Text style={{ fontSize: 12, fontWeight: 600 }}>{statutsBLPeriode.livre}</Text>
               </div>
               <Progress
-                percent={bons.length ? Math.round(statutsBL.livre / bons.length * 100) : 0}
+                percent={statutsBLPeriode.total ? Math.round(statutsBLPeriode.livre / statutsBLPeriode.total * 100) : 0}
                 showInfo={false}
                 strokeColor="#10b981"
                 size="small"
               />
             </div>
+
+            <Divider style={{ margin: '8px 0' }} />
+
+            {blLivresNonFactures.length === 0 ? (
+              <Text type="secondary" style={{ fontSize: 12 }}>✓ Tous les BL livrés sont facturés</Text>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 12 }}>
+                  <ExclamationCircleOutlined style={{ color: '#f59e0b', marginRight: 5 }} />
+                  <strong>{blLivresNonFactures.length}</strong> BL non facturé{blLivresNonFactures.length > 1 ? 's' : ''}{' '}
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    ({montantNonFacture.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} MAD)
+                  </Text>
+                </Text>
+                <Button
+                  size="small"
+                  type="link"
+                  onClick={() => navigate('/bons-livraison')}
+                  style={{ padding: 0, height: 'auto' }}
+                >
+                  Voir →
+                </Button>
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
@@ -443,35 +602,6 @@ export default function Dashboard() {
         </Col>
       </Row>
 
-      {/* Actions rapides */}
-      <div style={{ marginBottom: 12 }}>
-        <Text strong style={{ fontSize: 14, color: '#1e293b' }}>Actions rapides</Text>
-      </div>
-      <Row gutter={[16, 16]}>
-        {actionCards.map((card, i) => (
-          <Col xs={24} sm={12} lg={6} key={i}>
-            <Card
-              hoverable
-              onClick={card.action}
-              style={{
-                borderRadius: 10,
-                cursor: 'pointer',
-                background: card.bg,
-                border: `1px solid ${card.color}33`,
-              }}
-              styles={{ body: { padding: '18px 22px' } }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ color: card.color }}>{card.icon}</div>
-                  <Text strong style={{ fontSize: 14, color: '#1e293b' }}>{card.title}</Text>
-                </div>
-                <RightOutlined style={{ color: card.color, fontSize: 11 }} />
-              </div>
-            </Card>
-          </Col>
-        ))}
-      </Row>
     </div>
   )
 }
