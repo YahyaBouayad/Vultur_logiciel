@@ -10,6 +10,7 @@ from models.paiement import Paiement
 from models.produit import Produit
 from models.stock_mouvement import StockMouvement
 from models.utilisateur import Utilisateur
+from models.parametre import Parametre
 from schemas.facture import FactureOut, FactureCreate, FactureUpdate, FacturePage, StatutFactureUpdate, ImpayeOut
 from security import get_current_user
 
@@ -20,13 +21,16 @@ DELAI_DEFAUT = 30  # jours
 
 
 def generer_numero(db: Session) -> str:
-    annee = datetime.date.today().year
-    last = db.query(func.max(Facture.numero)).filter(
-        Facture.numero.like(f"FAC-{annee}-%")
-    ).scalar()
-    if last:
-        return f"FAC-{annee}-{str(int(last.split('-')[-1]) + 1).zfill(4)}"
-    return f"FAC-{annee}-0001"
+    annee_2 = str(datetime.date.today().year)[-2:]
+    p = db.query(Parametre).filter(Parametre.id == 1).with_for_update().first()
+    if not p:
+        p = Parametre(id=1, compteur_facture=1)
+        db.add(p)
+        db.flush()
+    numero = p.compteur_facture
+    p.compteur_facture = numero + 1
+    db.flush()
+    return f"FAC-{numero}/{annee_2}"
 
 
 def calcul_niveau(jours: int) -> str:

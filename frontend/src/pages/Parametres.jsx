@@ -111,11 +111,37 @@ function OngletSociete({ settings, saveSettings }) {
 /* ─── Onglet : Facturation ────────────────────────────────── */
 function OngletFacturation({ settings, saveSettings }) {
   const [form] = Form.useForm()
+  const [compteur, setCompteur]           = useState(1)
+  const [compteurInput, setCompteurInput] = useState(1)
+  const [compteurLoading, setCompteurLoading] = useState(false)
+
+  const annee2 = String(new Date().getFullYear()).slice(-2)
+
   useEffect(() => { form.setFieldsValue(settings) }, [settings, form])
+
+  useEffect(() => {
+    api.get('/parametres')
+      .then(r => { setCompteur(r.data.compteur_facture); setCompteurInput(r.data.compteur_facture) })
+      .catch(() => {})
+  }, [])
 
   const onSave = (values) => {
     saveSettings(values)
     message.success('Paramètres de facturation sauvegardés')
+  }
+
+  const saveCompteur = async () => {
+    setCompteurLoading(true)
+    try {
+      const res = await api.put('/parametres', { compteur_facture: compteurInput })
+      setCompteur(res.data.compteur_facture)
+      setCompteurInput(res.data.compteur_facture)
+      message.success('Numérotation mise à jour')
+    } catch (e) {
+      message.error(e.response?.data?.detail || 'Erreur')
+    } finally {
+      setCompteurLoading(false)
+    }
   }
 
   const tvaActuelle = Form.useWatch('tva', form)
@@ -123,7 +149,7 @@ function OngletFacturation({ settings, saveSettings }) {
   return (
     <Form form={form} layout="vertical" onFinish={onSave} style={{ maxWidth: 700 }}>
 
-      {/* TVA en premier et mis en avant */}
+      {/* TVA */}
       <SectionTitle icon={<FileTextOutlined />}>Taxe sur la valeur ajoutée (TVA)</SectionTitle>
       <Row gutter={16} align="bottom">
         <Col span={8}>
@@ -132,19 +158,14 @@ function OngletFacturation({ settings, saveSettings }) {
             label={<span style={{ fontWeight: 600, fontSize: 14 }}>Taux de TVA appliqué</span>}
             tooltip="Ce taux est appliqué sur toutes les factures PDF. Mettez 0% si vous êtes exonéré."
           >
-            <InputNumber
-              min={0} max={100} precision={1}
-              style={{ width: '100%' }}
-              addonAfter="%"
-              size="large"
-            />
+            <InputNumber min={0} max={100} precision={1} style={{ width: '100%' }} addonAfter="%" size="large" />
           </Form.Item>
         </Col>
         <Col span={16}>
           <div style={{
             background: tvaActuelle > 0 ? '#fefce8' : '#f0fdf4',
             border: `1px solid ${tvaActuelle > 0 ? '#fde047' : '#86efac'}`,
-            borderRadius: 8, padding: '10 16', marginBottom: 24,
+            borderRadius: 8, padding: '10px 16px', marginBottom: 24,
           }}>
             <Text strong style={{ color: tvaActuelle > 0 ? '#854d0e' : '#166534' }}>
               {tvaActuelle > 0
@@ -156,14 +177,67 @@ function OngletFacturation({ settings, saveSettings }) {
       </Row>
 
       <Divider />
-      <SectionTitle icon={<FileTextOutlined />}>Numérotation &amp; devise</SectionTitle>
+
+      {/* Numérotation factures */}
+      <SectionTitle icon={<FileTextOutlined />}>Numérotation des factures</SectionTitle>
+
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '20px 24px', marginBottom: 24 }}>
+        <Row gutter={24} align="middle">
+          <Col span={12}>
+            <div style={{ marginBottom: 6 }}>
+              <Text strong>Prochain numéro de facture</Text>
+              <br />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Format : <Text code>FAC-{'{'} x {'}'}/{annee2}</Text> — s'incrémente automatiquement à chaque facture créée.
+              </Text>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+              <InputNumber
+                min={1}
+                value={compteurInput}
+                onChange={(v) => setCompteurInput(v ?? 1)}
+                style={{ width: 120 }}
+                size="large"
+              />
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={compteurLoading}
+                onClick={saveCompteur}
+                style={{ background: '#1e293b', borderColor: '#1e293b' }}
+              >
+                Appliquer
+              </Button>
+            </div>
+          </Col>
+          <Col span={12}>
+            <div style={{ textAlign: 'center' }}>
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                Aperçu — prochaine facture
+              </Text>
+              <div style={{
+                display: 'inline-block',
+                background: '#1e293b', color: '#fff',
+                padding: '10px 24px', borderRadius: 8,
+                fontSize: 22, fontWeight: 700, letterSpacing: 1,
+              }}>
+                FAC-{compteurInput}/{annee2}
+              </div>
+              {compteurInput !== compteur && (
+                <div style={{ marginTop: 8 }}>
+                  <Text type="warning" style={{ fontSize: 12 }}>
+                    Modification non sauvegardée (actuel : {compteur})
+                  </Text>
+                </div>
+              )}
+            </div>
+          </Col>
+        </Row>
+      </div>
+
+      <Divider />
+      <SectionTitle icon={<FileTextOutlined />}>Devise &amp; conditions de paiement</SectionTitle>
       <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item name="prefixeFacture" label="Préfixe des factures"
-            tooltip="Exemple : FAC → FAC-2026-0001">
-            <Input placeholder="FAC" maxLength={6} />
-          </Form.Item>
-        </Col>
         <Col span={12}>
           <Form.Item name="devise" label="Devise">
             <Select options={[
@@ -173,11 +247,6 @@ function OngletFacturation({ settings, saveSettings }) {
             ]} />
           </Form.Item>
         </Col>
-      </Row>
-
-      <Divider />
-      <SectionTitle icon={<FileTextOutlined />}>Conditions de paiement</SectionTitle>
-      <Row gutter={16}>
         <Col span={12}>
           <Form.Item name="delaiPaiement" label="Délai de paiement par défaut"
             tooltip="Sert à calculer la date d'échéance">
@@ -185,11 +254,6 @@ function OngletFacturation({ settings, saveSettings }) {
           </Form.Item>
         </Col>
       </Row>
-
-      <Alert type="info" showIcon
-        message="La numérotation des factures est gérée par le serveur. Les autres paramètres s'appliquent immédiatement aux nouveaux PDFs générés."
-        style={{ marginBottom: 20, borderRadius: 8 }}
-      />
 
       <Button type="primary" htmlType="submit" icon={<SaveOutlined />} size="large"
         style={{ background: '#1e293b', borderColor: '#1e293b' }}>

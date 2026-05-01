@@ -1,7 +1,7 @@
 import {
   Table, Button, Input, Space, Typography, Modal, Form,
   Select, InputNumber, Popconfirm, message, Tooltip, Drawer,
-  Divider, Badge, Empty, DatePicker, Upload
+  Divider, Badge, Empty, DatePicker, Upload, Popover
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
@@ -47,6 +47,7 @@ export default function Achats() {
 
   const [drawer, setDrawer]     = useState(false)
   const [selected, setSelected] = useState(null)
+  const [noteEdit, setNoteEdit] = useState({ id: null, value: '' })
 
   const [form] = Form.useForm()
 
@@ -208,6 +209,17 @@ export default function Achats() {
     }
   }
 
+  const saveNote = async (bc, value) => {
+    try {
+      await api.put(`/bons-commande/${bc.id}`, { notes: value || null })
+      message.success('Note mise à jour')
+      setNoteEdit({ id: null, value: '' })
+      fetchAll()
+    } catch {
+      message.error('Erreur lors de la sauvegarde')
+    }
+  }
+
   const handlePdfUploadDirect = (file, bc) => {
     if (file.size > 5 * 1024 * 1024) {
       message.error('Le fichier PDF ne doit pas dépasser 5 Mo')
@@ -272,6 +284,53 @@ export default function Achats() {
       key: 'total',
       width: 140,
       render: (_, r) => <Text strong>{totalBC(r).toFixed(2)} MAD</Text>,
+    },
+    {
+      title: 'Notes',
+      key: 'notes',
+      render: (_, record) => (
+        <Popover
+          open={noteEdit.id === record.id}
+          onOpenChange={(open) => {
+            if (open) setNoteEdit({ id: record.id, value: record.notes || '' })
+            else setNoteEdit({ id: null, value: '' })
+          }}
+          trigger="click"
+          title={<span style={{ fontWeight: 600 }}>Note — BC #{record.id}</span>}
+          content={
+            <div style={{ width: 280 }}>
+              <Input.TextArea
+                rows={3}
+                value={noteEdit.value}
+                onChange={(e) => setNoteEdit((prev) => ({ ...prev, value: e.target.value }))}
+                placeholder="Ajouter une note de suivi..."
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}>
+                <Button size="small" onClick={() => setNoteEdit({ id: null, value: '' })}>
+                  Annuler
+                </Button>
+                <Button size="small" type="primary"
+                  style={{ background: '#1e293b', borderColor: '#1e293b' }}
+                  onClick={() => saveNote(record, noteEdit.value)}>
+                  Enregistrer
+                </Button>
+              </div>
+            </div>
+          }
+        >
+          <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, maxWidth: 200 }}>
+            {record.notes ? (
+              <Text style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
+                {record.notes}
+              </Text>
+            ) : (
+              <Text type="secondary" style={{ fontSize: 12, fontStyle: 'italic' }}>Ajouter une note…</Text>
+            )}
+            <EditOutlined style={{ color: '#94a3b8', fontSize: 11, flexShrink: 0 }} />
+          </div>
+        </Popover>
+      ),
     },
     {
       title: 'Actions',

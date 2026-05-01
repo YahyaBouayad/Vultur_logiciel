@@ -1,19 +1,30 @@
 import {
   Table, Button, Input, Space, Tag, Typography, Modal, Form,
-  Popconfirm, message, Tooltip, Switch
+  Popconfirm, message, Tooltip, Switch, Drawer, Card, Row, Col,
+  Statistic, Divider, Empty, Badge
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
-  UserOutlined, BankOutlined
+  UserOutlined, BankOutlined, PhoneOutlined, MailOutlined,
+  EnvironmentOutlined, HistoryOutlined, FileTextOutlined,
+  CheckCircleOutlined, ClockCircleOutlined, RiseOutlined,
+  FilePdfOutlined,
 } from '@ant-design/icons'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import api from '../api/axios'
 
 const { Title, Text } = Typography
 
+const statutColor = { brouillon: 'default', envoyé: 'processing', reçu: 'success' }
+const statutLabel = { brouillon: 'Brouillon', envoyé: 'Envoyé', reçu: 'Reçu' }
+
+const totalBC = (bc) =>
+  bc.lignes.reduce((s, l) => s + l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100), 0)
+
 export default function Fournisseurs() {
   const [fournisseurs, setFournisseurs] = useState([])
   const [filtered, setFiltered]         = useState([])
+  const [produits, setProduits]         = useState([])
   const [loading, setLoading]           = useState(false)
   const [search, setSearch]             = useState('')
 
@@ -21,6 +32,11 @@ export default function Fournisseurs() {
   const [editingFourn, setEditing]      = useState(null)
   const [formLoading, setFormLoading]   = useState(false)
   const [particulier, setParticulier]   = useState(false)
+
+  const [drawer, setDrawer]             = useState(false)
+  const [drawerFourn, setDrawerFourn]   = useState(null)
+  const [historique, setHistorique]     = useState([])
+  const [histLoading, setHistLoading]   = useState(false)
 
   const [form] = Form.useForm()
 
@@ -35,7 +51,10 @@ export default function Fournisseurs() {
     }
   }
 
-  useEffect(() => { fetchFournisseurs() }, [])
+  useEffect(() => {
+    fetchFournisseurs()
+    api.get('/produits').then(r => setProduits(r.data)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const q = search.toLowerCase()
@@ -91,6 +110,123 @@ export default function Fournisseurs() {
     }
   }
 
+  const openHistorique = async (fourn) => {
+    setDrawerFourn(fourn)
+    setDrawer(true)
+    setHistLoading(true)
+    try {
+      const res = await api.get('/bons-commande', { params: { fournisseur_id: fourn.id } })
+      setHistorique(res.data)
+    } catch {
+      setHistorique([])
+    } finally {
+      setHistLoading(false)
+    }
+  }
+
+  const nomProduit = (id) => {
+    const p = produits.find(p => p.id === id)
+    return p ? `${p.reference} — ${p.nom}` : `Produit #${id}`
+  }
+
+  const histStats = useMemo(() => {
+    const recus    = historique.filter(b => b.statut === 'reçu')
+    const enCours  = historique.filter(b => b.statut !== 'reçu')
+    const totalAchete  = recus.reduce((s, b) => s + totalBC(b), 0)
+    const totalEnCours = enCours.reduce((s, b) => s + totalBC(b), 0)
+    return { total: historique.length, recus: recus.length, enCours: enCours.length, totalAchete, totalEnCours }
+  }, [historique])
+
+  const downloadPdf = (bc) => {
+    const link = document.createElement('a')
+    link.href = `data:application/pdf;base64,${bc.pdf_base64}`
+    link.download = `BC-${String(bc.id).padStart(4, '0')}.pdf`
+    link.click()
+  }
+
+  const bcColumns = [
+    {
+      title: 'N°',
+      dataIndex: 'id',
+      width: 65,
+      render: v => <Text code>#{v}</Text>,
+    },
+    {
+      title: 'Date',
+      dataIndex: 'date',
+      width: 110,
+      render: v => new Date(v).toLocaleDateString('fr-FR'),
+    },
+    {
+      title: 'Articles',
+      dataIndex: 'lignes',
+      width: 80,
+      render: v => <Text type="secondary">{v.length} art.</Text>,
+    },
+    {
+      title: 'Total HT',
+      key: 'total',
+      width: 140,
+      render: (_, r) => <Text strong>{totalBC(r).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} MAD</Text>,
+    },
+    {
+      title: 'Statut',
+      dataIndex: 'statut',
+      width: 110,
+      render: v => <Badge status={statutColor[v]} text={statutLabel[v]} />,
+    },
+    {
+      title: '',
+      key: 'pdf',
+      width: 40,
+      render: (_, bc) => bc.pdf_base64
+        ? <Tooltip title="Télécharger PDF">
+            <Button size="small" icon={<FilePdfOutlined />}
+              style={{ color: '#dc2626', borderColor: '#fecaca' }}
+              onClick={() => downloadPdf(bc)} />
+          </Tooltip>
+        : null,
+    },
+  ]
+
+  const ligneColumns = [
+    {
+      title: 'Produit',
+      dataIndex: 'produit_id',
+      render: id => <Text strong>{nomProduit(id)}</Text>,
+    },
+    {
+      title: 'Qté',
+      dataIndex: 'quantite',
+      width: 60,
+      align: 'center',
+    },
+    {
+      title: 'Prix unit.',
+      dataIndex: 'prix_unitaire',
+      width: 120,
+      render: v => `${Number(v).toFixed(2)} MAD`,
+    },
+    {
+      title: 'Remise',
+      dataIndex: 'remise',
+      width: 80,
+      align: 'center',
+      render: v => Number(v) > 0
+        ? <Tag color="orange">{Number(v)}%</Tag>
+        : <Text type="secondary">—</Text>,
+    },
+    {
+      title: 'Sous-total',
+      key: 'soustotal',
+      width: 130,
+      render: (_, l) => {
+        const val = l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100)
+        return <Text strong style={{ color: '#1e293b' }}>{val.toFixed(2)} MAD</Text>
+      },
+    },
+  ]
+
   const columns = [
     {
       title: 'Type',
@@ -98,8 +234,8 @@ export default function Fournisseurs() {
       key: 'particulier',
       width: 110,
       render: (v) => v
-        ? <Tag icon={<UserOutlined />} color="blue">Particulier</Tag>
-        : <Tag icon={<BankOutlined />} color="geekblue">Entreprise</Tag>,
+        ? <Tag icon={<UserOutlined />}  color="blue">Particulier</Tag>
+        : <Tag icon={<BankOutlined />}  color="geekblue">Entreprise</Tag>,
     },
     {
       title: 'Nom / Société',
@@ -134,9 +270,12 @@ export default function Fournisseurs() {
     {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 130,
       render: (_, record) => (
-        <Space>
+        <Space size={4}>
+          <Tooltip title="Historique achats">
+            <Button icon={<HistoryOutlined />} size="small" onClick={() => openHistorique(record)} />
+          </Tooltip>
           <Tooltip title="Modifier">
             <Button icon={<EditOutlined />} size="small" onClick={() => openEdit(record)} />
           </Tooltip>
@@ -144,8 +283,7 @@ export default function Fournisseurs() {
             <Popconfirm
               title="Supprimer ce fournisseur ?"
               onConfirm={() => handleDelete(record.id)}
-              okText="Oui"
-              cancelText="Non"
+              okText="Oui" cancelText="Non"
             >
               <Button icon={<DeleteOutlined />} size="small" danger />
             </Popconfirm>
@@ -184,7 +322,7 @@ export default function Fournisseurs() {
         />
       </div>
 
-      {/* Modale Ajouter / Modifier */}
+      {/* Modal Ajouter / Modifier */}
       <Modal
         title={editingFourn ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
         open={modalOpen}
@@ -203,27 +341,21 @@ export default function Fournisseurs() {
               onChange={(v) => { setParticulier(v); if (v) form.setFieldValue('ice', null) }}
             />
           </Form.Item>
-
           <Form.Item name="nom" label="Nom / Société" rules={[{ required: true, message: 'Nom requis' }]}>
             <Input placeholder="Ex : Fournisseur Atlas" />
           </Form.Item>
-
           <Form.Item name="contact" label="Nom du contact">
             <Input placeholder="Ex : Ahmed Benali" />
           </Form.Item>
-
           <Form.Item name="telephone" label="Téléphone">
             <Input placeholder="Ex : +212 5 00 00 00 00" />
           </Form.Item>
-
           <Form.Item name="mail" label="Email">
             <Input placeholder="Ex : contact@fournisseur.ma" />
           </Form.Item>
-
           <Form.Item name="adresse" label="Adresse">
             <Input placeholder="Ex : Zone industrielle, Casablanca" />
           </Form.Item>
-
           {!particulier && (
             <Form.Item name="ice" label="ICE">
               <Input placeholder="Ex : 001234567000012" maxLength={15} />
@@ -231,6 +363,157 @@ export default function Fournisseurs() {
           )}
         </Form>
       </Modal>
+
+      {/* Drawer historique achats */}
+      <Drawer
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {drawerFourn?.particulier
+                ? <UserOutlined  style={{ color: '#fff', fontSize: 16 }} />
+                : <BankOutlined  style={{ color: '#fff', fontSize: 16 }} />}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3 }}>{drawerFourn?.nom}</div>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+                {drawerFourn?.particulier ? 'Particulier' : 'Entreprise'}
+                {drawerFourn?.ice ? ` · ICE ${drawerFourn.ice}` : ''}
+              </div>
+            </div>
+          </div>
+        }
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        width={760}
+        styles={{ body: { padding: '20px 24px', background: '#f8fafc' } }}
+      >
+        {/* Fiche contact */}
+        <Card size="small" style={{ borderRadius: 8, marginBottom: 16 }}>
+          <Row gutter={[16, 8]}>
+            {drawerFourn?.telephone && (
+              <Col xs={24} sm={12}>
+                <Space><PhoneOutlined style={{ color: '#64748b' }} /><Text>{drawerFourn.telephone}</Text></Space>
+              </Col>
+            )}
+            {drawerFourn?.mail && (
+              <Col xs={24} sm={12}>
+                <Space><MailOutlined style={{ color: '#64748b' }} /><Text>{drawerFourn.mail}</Text></Space>
+              </Col>
+            )}
+            {drawerFourn?.adresse && (
+              <Col xs={24}>
+                <Space><EnvironmentOutlined style={{ color: '#64748b' }} /><Text>{drawerFourn.adresse}</Text></Space>
+              </Col>
+            )}
+            {drawerFourn?.contact && (
+              <Col xs={24} sm={12}>
+                <Space>
+                  <UserOutlined style={{ color: '#64748b' }} />
+                  <Text type="secondary">Contact :</Text>
+                  <Text>{drawerFourn.contact}</Text>
+                </Space>
+              </Col>
+            )}
+            {!drawerFourn?.telephone && !drawerFourn?.mail && !drawerFourn?.adresse && !drawerFourn?.contact && (
+              <Col xs={24}><Text type="secondary">Aucune coordonnée renseignée</Text></Col>
+            )}
+          </Row>
+        </Card>
+
+        {/* KPIs */}
+        <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+          <Col xs={12} sm={6}>
+            <Card size="small" style={{ borderRadius: 8, textAlign: 'center', borderTop: '3px solid #3b82f6' }}>
+              <Statistic
+                title={<span style={{ fontSize: 11 }}>Total BC</span>}
+                value={histStats.total}
+                valueStyle={{ fontSize: 22, fontWeight: 700, color: '#3b82f6' }}
+                prefix={<FileTextOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card size="small" style={{ borderRadius: 8, textAlign: 'center', borderTop: '3px solid #10b981' }}>
+              <Statistic
+                title={<span style={{ fontSize: 11 }}>Reçus</span>}
+                value={histStats.recus}
+                valueStyle={{ fontSize: 22, fontWeight: 700, color: '#10b981' }}
+                prefix={<CheckCircleOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card size="small" style={{ borderRadius: 8, textAlign: 'center', borderTop: '3px solid #f59e0b' }}>
+              <Statistic
+                title={<span style={{ fontSize: 11 }}>En cours</span>}
+                value={histStats.enCours}
+                valueStyle={{ fontSize: 22, fontWeight: 700, color: '#f59e0b' }}
+                prefix={<ClockCircleOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card size="small" style={{ borderRadius: 8, textAlign: 'center', borderTop: '3px solid #8b5cf6' }}>
+              <Statistic
+                title={<span style={{ fontSize: 11 }}>Total acheté</span>}
+                value={histStats.totalAchete.toFixed(0)}
+                suffix="MAD"
+                valueStyle={{ fontSize: 18, fontWeight: 700, color: '#8b5cf6' }}
+                prefix={<RiseOutlined />}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Tableau BC */}
+        <Card size="small" style={{ borderRadius: 8 }} styles={{ body: { padding: 0 } }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text strong>Historique des bons de commande</Text>
+            {histStats.totalEnCours > 0 && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {histStats.totalEnCours.toFixed(2)} MAD en attente de réception
+              </Text>
+            )}
+          </div>
+          {historique.length === 0 && !histLoading ? (
+            <Empty description="Aucun bon de commande pour ce fournisseur" style={{ padding: 40 }} />
+          ) : (
+            <Table
+              columns={bcColumns}
+              dataSource={historique}
+              rowKey="id"
+              size="small"
+              loading={histLoading}
+              pagination={historique.length > 10 ? { pageSize: 10, size: 'small' } : false}
+              expandable={{
+                expandedRowRender: (bc) => (
+                  <div style={{ padding: '8px 0', background: '#fafafa' }}>
+                    <Table
+                      size="small"
+                      dataSource={bc.lignes}
+                      rowKey="id"
+                      pagination={false}
+                      columns={ligneColumns}
+                      style={{ margin: '0 8px' }}
+                      summary={() => (
+                        <Table.Summary.Row>
+                          <Table.Summary.Cell index={0} colSpan={4} align="right">
+                            <Text strong>Total HT</Text>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={4}>
+                            <Text strong style={{ color: '#1e293b' }}>{totalBC(bc).toFixed(2)} MAD</Text>
+                          </Table.Summary.Cell>
+                        </Table.Summary.Row>
+                      )}
+                    />
+                  </div>
+                ),
+                rowExpandable: bc => bc.lignes.length > 0,
+              }}
+            />
+          )}
+        </Card>
+      </Drawer>
     </div>
   )
 }

@@ -9,3 +9,4 @@ from .relance import Relance
 from .avoir import Avoir
 from .paiement import Paiement
 from .utilisateur import Utilisateur
+from .parametre import Parametre

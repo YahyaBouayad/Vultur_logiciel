@@ -3,12 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from database import engine, Base
 import models  # noqa: enregistre tous les modèles sur Base
-from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth
+from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth, parametres
 
 Base.metadata.create_all(bind=engine)
 
 # Migrations inline — ajoute les colonnes manquantes sur les tables existantes
 with engine.connect() as _conn:
+    _conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS parametres (
+            id INTEGER PRIMARY KEY,
+            compteur_facture INTEGER NOT NULL DEFAULT 1
+        )
+    """))
+    _conn.execute(text("INSERT INTO parametres (id, compteur_facture) VALUES (1, 1) ON CONFLICT (id) DO NOTHING"))
     _conn.execute(text("ALTER TABLE produits ADD COLUMN IF NOT EXISTS alerte_ignoree BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS type_client VARCHAR"))
     _conn.execute(text("UPDATE clients SET type_client = 'particulier' WHERE particulier = TRUE  AND type_client IS NULL"))
@@ -41,6 +48,7 @@ app.include_router(factures.router)
 app.include_router(relances.router)
 app.include_router(avoirs.router)
 app.include_router(paiements.router)
+app.include_router(parametres.router)
 
 
 @app.get("/")

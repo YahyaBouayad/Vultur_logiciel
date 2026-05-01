@@ -18,11 +18,13 @@ const statutColor = { brouillon: 'default', validé: 'processing', livré: 'succ
 const statutLabel = { brouillon: 'Brouillon', validé: 'Validé', livré: 'Livré' }
 
 const TYPE_CLIENT = {
-  pharmacie:      { label: 'Pharmacie',      color: 'green',   icon: <MedicineBoxOutlined /> },
-  parapharmacie:  { label: 'Parapharmacie',  color: 'cyan',    icon: <MedicineBoxOutlined /> },
-  clinique:       { label: 'Clinique',       color: 'blue',    icon: <HeartOutlined /> },
-  hopital:        { label: 'Hôpital',        color: 'red',     icon: <BankOutlined /> },
-  particulier:    { label: 'Particulier',    color: 'default', icon: <UserOutlined /> },
+  pharmacie:      { label: 'Pharmacie',       color: 'green',    icon: <MedicineBoxOutlined /> },
+  parapharmacie:  { label: 'Parapharmacie',   color: 'cyan',     icon: <MedicineBoxOutlined /> },
+  clinique:       { label: 'Clinique',        color: 'blue',     icon: <HeartOutlined /> },
+  hopital:        { label: 'Hôpital',         color: 'red',      icon: <BankOutlined /> },
+  grossiste:      { label: 'Grossiste',       color: 'orange',   icon: <BankOutlined /> },
+  cabinet_medical:{ label: 'Cabinet médical', color: 'purple',   icon: <HeartOutlined /> },
+  particulier:    { label: 'Particulier',     color: 'default',  icon: <UserOutlined /> },
 }
 
 const TypeTag = ({ type }) => {

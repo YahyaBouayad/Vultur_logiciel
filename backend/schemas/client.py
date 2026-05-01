@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 
-TYPES_CLIENT = {"pharmacie", "clinique", "hopital", "particulier", "parapharmacie"}
+TYPES_CLIENT = {"pharmacie", "clinique", "hopital", "particulier", "parapharmacie", "grossiste", "cabinet_medical"}
 
 
 class ClientCreate(BaseModel):

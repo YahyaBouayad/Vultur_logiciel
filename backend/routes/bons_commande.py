@@ -19,12 +19,14 @@ CYCLE = ["brouillon", "envoyé", "reçu"]
 def get_bons(
     date_debut: Optional[datetime.date] = None,
     date_fin: Optional[datetime.date] = None,
+    fournisseur_id: Optional[int] = None,
     db: Session = Depends(get_db),
     _: Utilisateur = Depends(get_current_user),
 ):
     q = db.query(BonCommande)
-    if date_debut: q = q.filter(BonCommande.date >= date_debut)
-    if date_fin:   q = q.filter(BonCommande.date <= date_fin)
+    if date_debut:      q = q.filter(BonCommande.date >= date_debut)
+    if date_fin:        q = q.filter(BonCommande.date <= date_fin)
+    if fournisseur_id:  q = q.filter(BonCommande.fournisseur_id == fournisseur_id)
     return q.order_by(BonCommande.date.desc()).all()
 
 
