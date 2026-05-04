@@ -5,7 +5,7 @@ import {
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
-  PlusCircleOutlined, HistoryOutlined, BellOutlined,
+  PlusCircleOutlined, MinusCircleOutlined, HistoryOutlined, BellOutlined,
   ExclamationCircleOutlined, WarningOutlined, EyeInvisibleOutlined,
   AppstoreOutlined, RiseOutlined,
 } from '@ant-design/icons'
@@ -37,6 +37,10 @@ export default function Produits() {
   const [stockModal, setStockModal]       = useState(false)
   const [stockProduit, setStockProduit]   = useState(null)
   const [stockForm]                       = Form.useForm()
+
+  const [sortieModal, setSortieModal]     = useState(false)
+  const [sortieProduit, setSortieProduit] = useState(null)
+  const [sortieForm]                      = Form.useForm()
 
   const [drawer, setDrawer]               = useState(false)
   const [mouvements, setMouvements]       = useState([])
@@ -135,6 +139,26 @@ export default function Produits() {
     setStockModal(true)
   }
 
+  const openSortieModal = (produit) => {
+    setSortieProduit(produit)
+    sortieForm.resetFields()
+    setSortieModal(true)
+  }
+
+  const handleSortieStock = async (values) => {
+    setFormLoading(true)
+    try {
+      await api.post('/stock/sortie', { produit_id: sortieProduit.id, quantite: values.quantite })
+      message.success(`−${values.quantite} unités retirées`)
+      setSortieModal(false)
+      fetchProduits()
+    } catch (e) {
+      message.error(e.response?.data?.detail || 'Erreur')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
   const handleEntreeStock = async (values) => {
     setFormLoading(true)
     try {
@@ -198,6 +222,10 @@ export default function Produits() {
           <Tooltip title="Entrée de stock">
             <Button icon={<PlusCircleOutlined />} size="small" type="primary" ghost
               onClick={() => openStockModal(record)} />
+          </Tooltip>
+          <Tooltip title="Sortie de stock">
+            <Button icon={<MinusCircleOutlined />} size="small" danger ghost
+              onClick={() => openSortieModal(record)} />
           </Tooltip>
           <Tooltip title="Historique mouvements">
             <Button icon={<HistoryOutlined />} size="small"
@@ -360,6 +388,25 @@ export default function Produits() {
           <Form.Item name="quantite" label="Quantité à ajouter"
             rules={[{ required: true, message: 'Quantité requise' }]}>
             <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Modal Sortie de stock */}
+      <Modal
+        title={`Sortie de stock — ${sortieProduit?.nom}`}
+        open={sortieModal}
+        onCancel={() => setSortieModal(false)}
+        onOk={() => sortieForm.submit()}
+        okText="Confirmer"
+        okButtonProps={{ danger: true }}
+        cancelText="Annuler"
+        confirmLoading={formLoading}
+      >
+        <Form form={sortieForm} layout="vertical" onFinish={handleSortieStock} style={{ marginTop: 16 }}>
+          <Form.Item name="quantite" label={`Quantité à retirer (stock actuel : ${sortieProduit?.stock ?? '—'})`}
+            rules={[{ required: true, message: 'Quantité requise' }]}>
+            <InputNumber min={1} max={sortieProduit?.stock} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>
