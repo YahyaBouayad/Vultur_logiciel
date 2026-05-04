@@ -62,3 +62,16 @@ class BonLivraisonOut(BaseModel):
 class BonLivraisonPage(BaseModel):
     items: List[BonLivraisonOut]
     total: int
+
+
+class BLEncaisseOut(BaseModel):
+    id: int
+    client_id: int
+    date: date
+    date_encaissement: Optional[date]
+    mode_encaissement: Optional[str]
+    montant: float
+    notes: Optional[str]
+
+    class Config:
+        from_attributes = True

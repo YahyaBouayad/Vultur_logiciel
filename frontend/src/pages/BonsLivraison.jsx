@@ -114,7 +114,7 @@ export default function BonsLivraison() {
 
   const openAdd = () => {
     form.resetFields()
-    setLignes([{ produit_id: null, quantite: 1, prix_unitaire: 0 }])
+    setLignes([{ produit_id: null, quantite: 1, prix_unitaire: 0, remise: 0 }])
     setModalMode('create')
     setEditingId(null)
     setModalOpen(true)

@@ -5,6 +5,7 @@ from database import get_db
 from models.facture import Facture
 from models.avoir import Avoir
 from models.utilisateur import Utilisateur
+from models.parametre import Parametre
 from schemas.avoir import AvoirCreate, AvoirOut, AvoirDetailOut
 from security import get_current_user
 import datetime
@@ -44,12 +45,20 @@ def _generer_numero(db: Session) -> str:
     return f"AV-{annee}-{str(count + 1).zfill(4)}"
 
 
-def _montant_ht_facture(facture) -> float:
+def _taux_tva(db: Session) -> float:
+    p = db.query(Parametre).filter(Parametre.id == 1).first()
+    return float(p.tva or 0) if p else 0.0
+
+
+def _montant_ht_facture(facture, taux_tva: float = 0.0) -> float:
     if facture.bon_livraison:
-        return sum(
+        raw = sum(
             float(l.prix_unitaire) * l.quantite * (1 - float(l.remise or 0) / 100)
             for l in facture.bon_livraison.lignes
         )
+        if facture.tva_incluse and taux_tva > 0:
+            return raw / (1 + taux_tva / 100)
+        return raw
     return 0.0
 
 
@@ -80,7 +89,8 @@ def create_avoir(facture_id: int, data: AvoirCreate, db: Session = Depends(get_d
     if facture.statut == "annulée":
         raise HTTPException(status_code=400, detail="Impossible d'émettre un avoir sur une facture annulée")
 
-    montant_facture  = _montant_ht_facture(facture)
+    tva = _taux_tva(db)
+    montant_facture  = _montant_ht_facture(facture, tva)
     deja_avoirs      = db.query(Avoir).filter(Avoir.facture_id == facture_id).all()
     total_avoirs     = sum(float(a.montant_ht) for a in deja_avoirs)
     total_paiements  = sum(float(p.montant) for p in facture.paiements) if facture.paiements else 0.0

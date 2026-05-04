@@ -121,8 +121,7 @@ export function FacturePage({ facture, client, bl, produits, entreprise = {} }) 
             }
           </View>
           <View style={s.companyBlock}>
-            {!E.logo && E.nom && <Text style={[s.companyName, { color: primary }]}>{E.nom}</Text>}
-            {E.logo && E.nom  && <Text style={[s.companyName, { color: primary }]}>{E.nom}</Text>}
+            {E.logo && E.nom && <Text style={[s.companyName, { color: primary }]}>{E.nom}</Text>}
             {E.adresse   && <Text style={s.companyLine}>{E.adresse}</Text>}
             {E.ville     && <Text style={s.companyLine}>{E.ville}</Text>}
             {E.telephone && <Text style={s.companyLine}>{E.telephone}</Text>}

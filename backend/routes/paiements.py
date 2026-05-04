@@ -6,23 +6,32 @@ from models.facture import Facture
 from models.bon_livraison import BonLivraison
 from models.paiement import Paiement
 from models.utilisateur import Utilisateur
+from models.parametre import Parametre
 from schemas.paiement import PaiementCreate, PaiementOut, SuiviFactureOut
 from security import get_current_user
 
 router = APIRouter(tags=["Paiements"])
 
 
-def _montant_ht(facture) -> float:
+def _taux_tva(db: Session) -> float:
+    p = db.query(Parametre).filter(Parametre.id == 1).first()
+    return float(p.tva or 0) if p else 0.0
+
+
+def _montant_ht(facture, taux_tva: float = 0.0) -> float:
     if facture.bon_livraison:
-        return sum(
+        raw = sum(
             float(l.prix_unitaire) * l.quantite * (1 - float(l.remise or 0) / 100)
             for l in facture.bon_livraison.lignes
         )
+        if facture.tva_incluse and taux_tva > 0:
+            return raw / (1 + taux_tva / 100)
+        return raw
     return 0.0
 
 
-def _build_suivi(facture, paiements) -> SuiviFactureOut:
-    montant_brut = _montant_ht(facture)
+def _build_suivi(facture, paiements, taux_tva: float = 0.0) -> SuiviFactureOut:
+    montant_brut = _montant_ht(facture, taux_tva)
     # Les avoirs réduisent le montant effectivement dû
     total_avoirs = sum(float(a.montant_ht) for a in facture.avoirs) if facture.avoirs else 0.0
     montant_ht   = max(0.0, round(montant_brut - total_avoirs, 2))
@@ -63,7 +72,8 @@ def get_suivi(db: Session = Depends(get_db), _: Utilisateur = Depends(get_curren
         .order_by(Facture.date_emission.desc(), Facture.id.desc())
         .all()
     )
-    return [_build_suivi(f, f.paiements) for f in factures]
+    tva = _taux_tva(db)
+    return [_build_suivi(f, f.paiements, tva) for f in factures]
 
 
 @router.get("/factures/{facture_id}/paiements", response_model=List[PaiementOut])
@@ -90,7 +100,8 @@ def create_paiement(facture_id: int, data: PaiementCreate, db: Session = Depends
     if facture.statut == "annulée":
         raise HTTPException(status_code=400, detail="Impossible d'enregistrer un paiement sur une facture annulée")
 
-    montant_brut  = _montant_ht(facture)
+    tva           = _taux_tva(db)
+    montant_brut  = _montant_ht(facture, tva)
     total_avoirs  = sum(float(a.montant_ht) for a in facture.avoirs) if facture.avoirs else 0.0
     montant_net   = max(0.0, montant_brut - total_avoirs)
     deja_paye     = sum(float(p.montant) for p in db.query(Paiement).filter(Paiement.facture_id == facture_id).all())
@@ -136,8 +147,9 @@ def delete_paiement(paiement_id: int, db: Session = Depends(get_db), _: Utilisat
     )
     db.delete(p)
     db.flush()
+    tva           = _taux_tva(db)
     remaining     = db.query(Paiement).filter(Paiement.facture_id == p.facture_id).all()
-    montant_brut  = _montant_ht(facture)
+    montant_brut  = _montant_ht(facture, tva)
     total_avoirs  = sum(float(a.montant_ht) for a in facture.avoirs) if facture.avoirs else 0.0
     montant_net   = max(0.0, montant_brut - total_avoirs)
     total_reste   = sum(float(r.montant) for r in remaining)

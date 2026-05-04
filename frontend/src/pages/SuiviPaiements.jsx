@@ -6,6 +6,7 @@ import {
 import {
   CheckCircleOutlined, ExclamationCircleOutlined, PieChartOutlined,
   SearchOutlined, PlusOutlined, DeleteOutlined, ArrowUpOutlined,
+  WalletOutlined,
 } from '@ant-design/icons'
 import { useEffect, useState, useMemo } from 'react'
 import dayjs from 'dayjs'
@@ -45,13 +46,14 @@ function StatutTag({ row }) {
 
 export default function SuiviPaiements() {
   const { refresh: refreshImpayes } = useImpayes()
-  const [data, setData]       = useState([])
-  const [clients, setClients] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [data, setData]           = useState([])
+  const [encaisses, setEncaisses] = useState([])
+  const [clients, setClients]     = useState([])
+  const [loading, setLoading]     = useState(false)
 
-  const [search, setSearch]           = useState('')
+  const [search, setSearch]             = useState('')
   const [filterClient, setFilterClient] = useState(null)
-  const [activeTab, setActiveTab]     = useState('soldes')
+  const [activeTab, setActiveTab]       = useState('soldes')
 
   const [paiModal, setPaiModal]       = useState(false)
   const [paiRow, setPaiRow]           = useState(null)
@@ -61,12 +63,14 @@ export default function SuiviPaiements() {
   const load = async () => {
     setLoading(true)
     try {
-      const [sv, cl] = await Promise.all([
+      const [sv, cl, enc] = await Promise.all([
         api.get('/suivi-paiements'),
         api.get('/clients'),
+        api.get('/bons-livraison/encaisses'),
       ])
       setData(sv.data)
       setClients(cl.data)
+      setEncaisses(enc.data)
     } catch {
       setData([])
     } finally {
@@ -93,8 +97,20 @@ export default function SuiviPaiements() {
   const paiementsPartiels = useMemo(() => filtered.filter(r => statutPaiement(r) === 'partiel'), [filtered])
   const facturesPayees    = useMemo(() => filtered.filter(r => statutPaiement(r) === 'soldee'), [filtered])
 
+  // Filtrage encaissements directs (BL sans facture)
+  const encaissesFiltres = useMemo(() => {
+    const q = search.toLowerCase()
+    return encaisses.filter(r => {
+      const matchClient = !filterClient || r.client_id === filterClient
+      const matchSearch = !q || `BL #${r.id}`.toLowerCase().includes(q) || nomClient(r.client_id).toLowerCase().includes(q)
+      return matchClient && matchSearch
+    })
+  }, [encaisses, search, filterClient, clients])
+
   // KPIs
-  const totalEncaisse  = useMemo(() => filtered.reduce((s, r) => s + r.montant_paye, 0), [filtered])
+  const totalEncaisseFactures = useMemo(() => filtered.reduce((s, r) => s + r.montant_paye, 0), [filtered])
+  const totalEncaisseDirects  = useMemo(() => encaissesFiltres.reduce((s, r) => s + r.montant, 0), [encaissesFiltres])
+  const totalEncaisse  = totalEncaisseFactures + totalEncaisseDirects
   const resteRecouvrer = useMemo(() => soldesRestants.reduce((s, r) => s + r.solde, 0), [soldesRestants])
   const restePartiel   = useMemo(() => paiementsPartiels.reduce((s, r) => s + r.solde, 0), [paiementsPartiels])
 
@@ -257,6 +273,45 @@ export default function SuiviPaiements() {
     )
   }
 
+  const columnsDirects = [
+    {
+      title: 'Référence BL',
+      key: 'ref',
+      width: 130,
+      render: (_, r) => <Text code style={{ fontWeight: 600 }}>BL #{r.id}</Text>,
+    },
+    {
+      title: 'Client',
+      dataIndex: 'client_id',
+      render: id => <Text strong>{nomClient(id)}</Text>,
+    },
+    {
+      title: 'Date règlement',
+      dataIndex: 'date_encaissement',
+      width: 140,
+      render: v => v ? new Date(v).toLocaleDateString('fr-FR') : <Text type="secondary">—</Text>,
+    },
+    {
+      title: 'Mode',
+      dataIndex: 'mode_encaissement',
+      width: 150,
+      render: v => v ? <Tag color={MODE_COLOR[v] || 'default'}>{v}</Tag> : <Text type="secondary">—</Text>,
+    },
+    {
+      title: 'Montant',
+      dataIndex: 'montant',
+      width: 140,
+      align: 'right',
+      render: v => <Text strong style={{ color: '#059669' }}>{fmt(v)} MAD</Text>,
+    },
+    {
+      title: 'Statut',
+      key: 'statut',
+      width: 160,
+      render: () => <Tag color="success" icon={<CheckCircleOutlined />}>Réglé (sans facture)</Tag>,
+    },
+  ]
+
   const tabItems = [
     {
       key: 'soldes',
@@ -300,6 +355,20 @@ export default function SuiviPaiements() {
         </span>
       ),
     },
+    {
+      key: 'directs',
+      label: (
+        <span>
+          <WalletOutlined style={{ marginRight: 5 }} />
+          Règlements directs
+          {encaissesFiltres.length > 0 && (
+            <span style={{ marginLeft: 6, background: '#8b5cf6', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 7px' }}>
+              {encaissesFiltres.length}
+            </span>
+          )}
+        </span>
+      ),
+    },
   ]
 
   return (
@@ -319,7 +388,10 @@ export default function SuiviPaiements() {
               valueStyle={{ color: '#10b981', fontWeight: 700 }}
               prefix={<ArrowUpOutlined />}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>{facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''} soldée{facturesPayees.length !== 1 ? 's' : ''}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+          {facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''} soldée{facturesPayees.length !== 1 ? 's' : ''}
+          {totalEncaisseDirects > 0 && ` · dont ${fmt(totalEncaisseDirects)} MAD en règlement direct`}
+        </Text>
           </Card>
         </Col>
         <Col xs={24} sm={8}>
@@ -373,18 +445,29 @@ export default function SuiviPaiements() {
 
         <Tabs items={tabItems} activeKey={activeTab} onChange={setActiveTab} style={{ marginBottom: 4 }} />
 
-        <Table
-          columns={columns}
-          dataSource={tableData}
-          rowKey="facture_id"
-          loading={loading}
-          pagination={{ pageSize: 15, showTotal: t => `${t} facture(s)`, showSizeChanger: false }}
-          locale={{ emptyText: 'Aucune facture dans cette catégorie' }}
-          expandable={{
-            expandedRowRender,
-            rowExpandable: r => r.paiements?.length > 0 || r.montant_paye > 0,
-          }}
-        />
+        {activeTab === 'directs' ? (
+          <Table
+            columns={columnsDirects}
+            dataSource={encaissesFiltres}
+            rowKey="id"
+            loading={loading}
+            pagination={{ pageSize: 15, showTotal: t => `${t} règlement(s)`, showSizeChanger: false }}
+            locale={{ emptyText: 'Aucun règlement direct enregistré' }}
+          />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={tableData}
+            rowKey="facture_id"
+            loading={loading}
+            pagination={{ pageSize: 15, showTotal: t => `${t} facture(s)`, showSizeChanger: false }}
+            locale={{ emptyText: 'Aucune facture dans cette catégorie' }}
+            expandable={{
+              expandedRowRender,
+              rowExpandable: r => r.paiements?.length > 0 || r.montant_paye > 0,
+            }}
+          />
+        )}
       </div>
 
       {/* Modal enregistrer paiement */}

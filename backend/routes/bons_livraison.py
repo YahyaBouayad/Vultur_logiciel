@@ -9,7 +9,7 @@ from models.stock_mouvement import StockMouvement
 from models.utilisateur import Utilisateur
 from schemas.bon_livraison import (
     BonLivraisonCreate, BonLivraisonUpdate,
-    BonLivraisonOut, BonLivraisonPage, StatutUpdate, EncaisserUpdate,
+    BonLivraisonOut, BonLivraisonPage, StatutUpdate, EncaisserUpdate, BLEncaisseOut,
 )
 from security import get_current_user
 
@@ -59,6 +59,34 @@ def get_bons(
     )
 
     return {"items": [_build_out(bl) for bl in items], "total": total}
+
+
+@router.get("/encaisses", response_model=List[BLEncaisseOut])
+def get_bls_encaisses(db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
+    """BL réglés directement (sans facture formelle) — encaisse=True."""
+    bls = (
+        db.query(BonLivraison)
+        .options(joinedload(BonLivraison.lignes))
+        .filter(BonLivraison.encaisse == True)
+        .order_by(BonLivraison.date_encaissement.desc(), BonLivraison.id.desc())
+        .all()
+    )
+    result = []
+    for bl in bls:
+        montant = sum(
+            float(l.prix_unitaire) * l.quantite * (1 - float(l.remise or 0) / 100)
+            for l in bl.lignes
+        )
+        result.append(BLEncaisseOut(
+            id=bl.id,
+            client_id=bl.client_id,
+            date=bl.date,
+            date_encaissement=bl.date_encaissement,
+            mode_encaissement=bl.mode_encaissement,
+            montant=montant,
+            notes=bl.notes,
+        ))
+    return result
 
 
 @router.get("/{bl_id}", response_model=BonLivraisonOut)

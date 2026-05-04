@@ -265,13 +265,24 @@ function OngletFacturation({ settings, saveSettings }) {
 
 /* ─── Onglet : Personnalisation PDF ──────────────────────── */
 function OngletPDF({ settings, saveSettings }) {
-  const [logoPreview, setLogoPreview] = useState(settings.logo || null)
+  const [logoPreview,    setLogoPreview]    = useState(settings.logo || null)
   const [couleurPrimaire, setCouleurPrimaire] = useState(settings.couleurPrimaire || '#1e293b')
   const [couleurAccent,   setCouleurAccent]   = useState(settings.couleurAccent   || '#10b981')
-  const [conditions, setConditions]   = useState(settings.conditionsPaiement || '')
-  const [mentions,   setMentions]     = useState(settings.mentionsLegales     || '')
-  const [piedPage,   setPiedPage]     = useState(settings.piedDePage          || '')
+  const [conditions,     setConditions]     = useState(settings.conditionsPaiement || '')
+  const [mentions,       setMentions]       = useState(settings.mentionsLegales   || '')
+  const [piedPage,       setPiedPage]       = useState(settings.piedDePage        || '')
   const [afficherRemise, setAfficherRemise] = useState(settings.afficherRemise !== false)
+
+  // Synchronise les états locaux si les settings sont rechargés depuis la BDD
+  useEffect(() => {
+    setLogoPreview(settings.logo || null)
+    setCouleurPrimaire(settings.couleurPrimaire || '#1e293b')
+    setCouleurAccent(settings.couleurAccent || '#10b981')
+    setConditions(settings.conditionsPaiement || '')
+    setMentions(settings.mentionsLegales || '')
+    setPiedPage(settings.piedDePage || '')
+    setAfficherRemise(settings.afficherRemise !== false)
+  }, [settings])
 
   const handleRemiseToggle = (val) => {
     setAfficherRemise(val)

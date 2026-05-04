@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { message } from 'antd'
 import api from '../api/axios'
 
 const SettingsContext = createContext(null)
@@ -92,12 +93,14 @@ export function SettingsProvider({ children }) {
   }, [reload])
 
   const saveSettings = useCallback(async (updates) => {
-    setSettings(prev => ({ ...prev, ...updates }))
+    let snapshot
+    setSettings(prev => { snapshot = prev; return { ...prev, ...updates } })
     try {
       const r = await api.put('/parametres', toApi(updates))
       setSettings({ ...DEFAULT_SETTINGS, ...fromApi(r.data) })
     } catch {
-      setSettings(prev => ({ ...prev }))
+      if (snapshot) setSettings(snapshot)
+      message.error('Erreur lors de la sauvegarde des paramètres')
     }
   }, [])
 

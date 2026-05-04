@@ -7,7 +7,7 @@ import {
   CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FileTextOutlined,
   WarningOutlined, ClockCircleOutlined, FilePdfOutlined, EditOutlined,
   BellOutlined, DeleteOutlined, PlusOutlined, FileProtectOutlined, EuroOutlined,
-  CreditCardOutlined,
+  CreditCardOutlined, RollbackOutlined,
 } from '@ant-design/icons'
 import RelancePDF from '../components/pdf/RelancePDF'
 import AvoirPDF from '../components/pdf/AvoirPDF'
@@ -434,6 +434,22 @@ export default function Factures() {
     }
   }
 
+  const reouvrir = async (id) => {
+    try {
+      await api.put(`/factures/${id}/statut`, { statut: 'émise' })
+      message.success('Facture remise en émise')
+      loadFactures(page, filterStatut, filterClient, search, onglet)
+      loadImpayes()
+      refreshImpayes()
+      if (drawer && selected?.id === id) {
+        const updated = await api.get(`/factures/${id}`)
+        setSelected(updated.data)
+      }
+    } catch (e) {
+      message.error(e.response?.data?.detail || 'Erreur')
+    }
+  }
+
   const deleteFacture = async (id) => {
     try {
       await api.delete(`/factures/${id}`)
@@ -737,6 +753,25 @@ export default function Factures() {
                 </Button>
               </>
             )}
+            {selected?.statut === 'payée' && (
+              <Popconfirm
+                title="Remettre en émise ?"
+                description={paiements.length > 0
+                  ? "Cette facture a des paiements enregistrés. Supprimez-les d'abord."
+                  : "Cette action annule le marquage 'payée'."
+                }
+                onConfirm={() => reouvrir(selected.id)}
+                okText="Réouvrir" cancelText="Non"
+                disabled={paiements.length > 0}
+              >
+                <Button icon={<RollbackOutlined />}
+                  disabled={paiements.length > 0}
+                  title={paiements.length > 0 ? "Supprimez d'abord les paiements enregistrés" : ''}
+                  style={{ color: '#f59e0b', borderColor: '#f59e0b' }}>
+                  Réouvrir
+                </Button>
+              </Popconfirm>
+            )}
             {selected?.statut === 'annulée' && (
               <Popconfirm title="Supprimer cette facture définitivement ?"
                 onConfirm={() => deleteFacture(selected.id)}
@@ -908,7 +943,8 @@ export default function Factures() {
 
             {(() => {
               const totalAvoirs = avoirs.reduce((s, a) => s + Number(a.montant_ht), 0)
-              const solde = (selected?.montant_ht || 0) - totalAvoirs
+              const totalPaye   = paiements.reduce((s, p) => s + Number(p.montant), 0)
+              const solde = Math.max(0, (selected?.montant_ht || 0) - totalAvoirs - totalPaye)
               return avoirs.length > 0 && (
                 <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
                   <Text style={{ fontSize: 12, color: '#059669' }}>Total avoirs émis : <strong>{totalAvoirs.toFixed(2)} MAD</strong></Text>
@@ -1074,7 +1110,7 @@ export default function Factures() {
                 ]}
                 summary={() => (
                   <Table.Summary.Row>
-                    <Table.Summary.Cell colSpan={3} align="right"><Text strong>Total</Text></Table.Summary.Cell>
+                    <Table.Summary.Cell colSpan={4} align="right"><Text strong>Total</Text></Table.Summary.Cell>
                     <Table.Summary.Cell>
                       <Text strong style={{ color: '#10b981' }}>{totalBL(selectedBL).toFixed(2)} MAD</Text>
                     </Table.Summary.Cell>

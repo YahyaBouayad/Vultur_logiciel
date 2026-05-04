@@ -20,6 +20,16 @@ STATUTS = ["émise", "payée", "annulée"]
 DELAI_DEFAUT = 30  # jours
 
 
+def _get_parametre(db: Session) -> Parametre:
+    p = db.query(Parametre).filter(Parametre.id == 1).first()
+    return p or Parametre(id=1, compteur_facture=1)
+
+
+def _taux_tva(db: Session) -> float:
+    p = db.query(Parametre).filter(Parametre.id == 1).first()
+    return float(p.tva or 0) if p else 0.0
+
+
 def generer_numero(db: Session) -> str:
     annee_2 = str(datetime.date.today().year)[-2:]
     p = db.query(Parametre).filter(Parametre.id == 1).with_for_update().first()
@@ -27,10 +37,11 @@ def generer_numero(db: Session) -> str:
         p = Parametre(id=1, compteur_facture=1)
         db.add(p)
         db.flush()
+    prefixe = (p.prefixe_facture or 'FAC').strip()
     numero = p.compteur_facture
     p.compteur_facture = numero + 1
     db.flush()
-    return f"FAC-{numero}/{annee_2}"
+    return f"{prefixe}-{numero}/{annee_2}"
 
 
 def calcul_niveau(jours: int) -> str:
@@ -40,24 +51,30 @@ def calcul_niveau(jours: int) -> str:
     return "critique"
 
 
-def _montant_ht(facture) -> float:
+def _montant_ht(facture, taux_tva: float = 0.0) -> float:
     if facture.bon_livraison:
-        return sum(
+        raw = sum(
             float(l.prix_unitaire) * l.quantite * (1 - float(l.remise or 0) / 100)
             for l in facture.bon_livraison.lignes
         )
+        if facture.tva_incluse and taux_tva > 0:
+            return raw / (1 + taux_tva / 100)
+        return raw
     return 0.0
 
 
-def _build_out(f) -> FactureOut:
+def _build_out(f, taux_tva: float = 0.0) -> FactureOut:
     out = FactureOut.model_validate(f)
-    out.montant_ht = _montant_ht(f)
+    out.montant_ht = _montant_ht(f, taux_tva)
     return out
 
 
 @router.get("/impayes", response_model=List[ImpayeOut])
 def get_impayes(db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     aujourd_hui = datetime.date.today()
+    param = _get_parametre(db)
+    delai = int(param.delai_paiement or DELAI_DEFAUT)
+    tva   = float(param.tva or 0)
     factures = (
         db.query(Facture)
         .options(joinedload(Facture.bon_livraison).joinedload(BonLivraison.lignes))
@@ -66,7 +83,7 @@ def get_impayes(db: Session = Depends(get_db), _: Utilisateur = Depends(get_curr
     )
     result = []
     for f in factures:
-        echeance = f.date_echeance or (f.date_emission + datetime.timedelta(days=DELAI_DEFAUT))
+        echeance = f.date_echeance or (f.date_emission + datetime.timedelta(days=delai))
         jours = (aujourd_hui - echeance).days
         result.append(ImpayeOut(
             id=f.id,
@@ -76,7 +93,7 @@ def get_impayes(db: Session = Depends(get_db), _: Utilisateur = Depends(get_curr
             date_echeance=echeance,
             jours_retard=jours,
             niveau=calcul_niveau(jours),
-            montant_ht=_montant_ht(f),
+            montant_ht=_montant_ht(f, tva),
         ))
     return sorted(result, key=lambda x: x.jours_retard, reverse=True)
 
@@ -112,7 +129,8 @@ def get_factures(
         .all()
     )
 
-    return {"items": [_build_out(f) for f in items], "total": total}
+    tva = _taux_tva(db)
+    return {"items": [_build_out(f, tva) for f in items], "total": total}
 
 
 @router.get("/{facture_id}", response_model=FactureOut)
@@ -125,7 +143,7 @@ def get_facture(facture_id: int, db: Session = Depends(get_db), _: Utilisateur =
     )
     if not f:
         raise HTTPException(status_code=404, detail="Facture introuvable")
-    return _build_out(f)
+    return _build_out(f, _taux_tva(db))
 
 
 @router.post("", response_model=FactureOut, status_code=201)
@@ -143,7 +161,9 @@ def create_facture(data: FactureCreate, db: Session = Depends(get_db), _: Utilis
     if existante:
         raise HTTPException(status_code=400, detail=f"Ce BL est déjà facturé ({existante.numero})")
 
-    echeance = data.date_echeance or (datetime.date.today() + datetime.timedelta(days=DELAI_DEFAUT))
+    param = _get_parametre(db)
+    delai = int(param.delai_paiement or DELAI_DEFAUT)
+    echeance = data.date_echeance or (datetime.date.today() + datetime.timedelta(days=delai))
 
     facture = Facture(
         numero=generer_numero(db),
@@ -175,7 +195,7 @@ def create_facture(data: FactureCreate, db: Session = Depends(get_db), _: Utilis
 
     db.commit()
     db.refresh(facture)
-    return _build_out(facture)
+    return _build_out(facture, _taux_tva(db))
 
 
 @router.put("/{facture_id}", response_model=FactureOut)
@@ -200,7 +220,7 @@ def update_facture(facture_id: int, data: FactureUpdate, db: Session = Depends(g
         f.tva_incluse = data.tva_incluse
     db.commit()
     db.refresh(f)
-    return _build_out(f)
+    return _build_out(f, _taux_tva(db))
 
 
 @router.put("/{facture_id}/statut", response_model=FactureOut)
@@ -217,6 +237,15 @@ def update_statut(facture_id: int, data: StatutFactureUpdate, db: Session = Depe
         raise HTTPException(status_code=400, detail=f"Statut invalide. Valeurs : {STATUTS}")
     if f.statut == "annulée":
         raise HTTPException(status_code=400, detail="Une facture annulée ne peut pas être modifiée")
+
+    # Retour payée → émise : autorisé seulement si aucun paiement enregistré
+    if f.statut == "payée" and data.statut == "émise":
+        total_paye = sum(float(p.montant) for p in f.paiements)
+        if total_paye > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Des paiements sont enregistrés sur cette facture. Supprimez-les d'abord pour la remettre en émise.",
+            )
 
     if data.statut == "annulée":
         total_paye = sum(float(p.montant) for p in f.paiements)
@@ -242,7 +271,7 @@ def update_statut(facture_id: int, data: StatutFactureUpdate, db: Session = Depe
     f.statut = data.statut
     db.commit()
     db.refresh(f)
-    return _build_out(f)
+    return _build_out(f, _taux_tva(db))
 
 
 @router.delete("/{facture_id}", status_code=204)
