@@ -3,11 +3,13 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useSettings } from '../context/SettingsContext'
 
 const { Title, Text } = Typography
 
 export default function Login() {
   const { login } = useAuth()
+  const { reload: reloadSettings } = useSettings()
   const navigate = useNavigate()
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -17,6 +19,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(email, mot_de_passe)
+      await reloadSettings()
       navigate('/dashboard')
     } catch {
       setError('Email ou mot de passe incorrect.')

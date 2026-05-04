@@ -7,12 +7,14 @@ class FactureCreate(BaseModel):
     bon_livraison_id: int
     notes: Optional[str] = None
     date_echeance: Optional[date] = None  # défaut : émission + 30 jours
+    tva_incluse: bool = False
 
 
 class FactureUpdate(BaseModel):
     notes: Optional[str] = None
     date_echeance: Optional[date] = None
     date_emission: Optional[date] = None
+    tva_incluse: Optional[bool] = None
 
 
 class StatutFactureUpdate(BaseModel):
@@ -29,6 +31,7 @@ class FactureOut(BaseModel):
     statut: str
     notes: Optional[str]
     montant_ht: float = 0.0
+    tva_incluse: bool = False
 
     class Config:
         from_attributes = True

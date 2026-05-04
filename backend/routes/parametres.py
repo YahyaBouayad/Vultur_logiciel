@@ -27,7 +27,8 @@ def get_parametre(db: Session = Depends(get_db), _: Utilisateur = Depends(get_cu
 @router.put("", response_model=ParametreOut)
 def update_parametre(data: ParametreUpdate, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     p = _get_or_create(db)
-    p.compteur_facture = data.compteur_facture
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(p, field, value)
     db.commit()
     db.refresh(p)
     return p

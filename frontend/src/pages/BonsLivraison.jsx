@@ -1,7 +1,7 @@
 import {
   Table, Button, Input, Space, Typography, Modal, Form,
   Select, InputNumber, Popconfirm, message, Tooltip, Drawer,
-  Divider, Badge, Empty, Tag, DatePicker
+  Divider, Badge, Empty, Tag, DatePicker, Card,
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, DeleteOutlined,
@@ -503,91 +503,134 @@ export default function BonsLivraison() {
         okText={modalMode === 'edit' ? 'Enregistrer' : 'Créer'}
         cancelText="Annuler"
         confirmLoading={formLoading}
-        width={680}
+        width={900}
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 16 }}>
-          <Form.Item name="client_id" label="Client" rules={[{ required: true, message: 'Client requis' }]}>
-            <Select
-              placeholder="Sélectionner un client"
-              options={clients.map(c => ({ value: c.id, label: c.nom }))}
-              showSearch
-              filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
-            />
-          </Form.Item>
-
-          <Form.Item name="notes" label="Notes">
-            <Input.TextArea rows={2} placeholder="Remarques optionnelles..." />
-          </Form.Item>
-
-          <Divider orientation="left" style={{ fontSize: 13 }}>Lignes du bon</Divider>
-
-          {lignes.map((ligne, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'flex-start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item name="client_id" label="Client" rules={[{ required: true, message: 'Client requis' }]}>
               <Select
-                placeholder="Produit"
-                style={{ flex: 2 }}
-                value={ligne.produit_id}
-                onChange={(v) => updateLigne(idx, 'produit_id', v)}
-                options={produits.map(p => ({
-                  value: p.id,
-                  label: `${p.reference} — ${p.nom} (stock: ${p.stock})`,
-                }))}
+                placeholder="Sélectionner un client"
+                options={clients.map(c => ({ value: c.id, label: c.nom }))}
                 showSearch
                 filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
               />
-              <InputNumber
-                min={1}
-                value={ligne.quantite}
-                onChange={(v) => updateLigne(idx, 'quantite', v)}
-                placeholder="Qté"
-                style={{ width: 80 }}
-              />
-              <InputNumber
-                min={0}
-                precision={2}
-                value={ligne.prix_unitaire}
-                onChange={(v) => updateLigne(idx, 'prix_unitaire', v)}
-                placeholder="Prix unit."
-                style={{ width: 110 }}
-                addonAfter="MAD"
-              />
-              <InputNumber
-                min={0}
-                max={100}
-                precision={1}
-                value={ligne.remise || 0}
-                onChange={(v) => updateLigne(idx, 'remise', v || 0)}
-                placeholder="Remise"
-                style={{ width: 90 }}
-                addonAfter="%"
-              />
-              <Button
-                icon={<MinusCircleOutlined />}
-                danger
-                disabled={lignes.length === 1}
-                onClick={() => removeLigne(idx)}
-              />
-            </div>
-          ))}
+            </Form.Item>
+            <Form.Item name="notes" label="Notes">
+              <Input.TextArea placeholder="Remarques optionnelles..." autoSize={{ minRows: 1, maxRows: 3 }} />
+            </Form.Item>
+          </div>
 
-          <Button type="dashed" onClick={addLigne} icon={<PlusOutlined />} block>
-            Ajouter une ligne
+          <Divider orientation="left" style={{ fontSize: 13 }}>Lignes du bon</Divider>
+
+          {/* En-têtes colonnes */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 72px 150px 105px 110px 32px',
+            gap: 8,
+            paddingBottom: 6,
+            borderBottom: '1px solid #e2e8f0',
+            marginBottom: 8,
+          }}>
+            {['Produit', 'Qté', 'Prix unitaire', 'Remise', 'Sous-total', ''].map((h, i) => (
+              <Text key={i} type="secondary" style={{ fontSize: 11, textAlign: i >= 1 && i <= 4 ? 'right' : 'left' }}>
+                {h}
+              </Text>
+            ))}
+          </div>
+
+          {lignes.map((ligne, idx) => {
+            const sousTotal = (ligne.quantite || 0) * (ligne.prix_unitaire || 0) * (1 - (ligne.remise || 0) / 100)
+            return (
+              <div key={idx} style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 72px 150px 105px 110px 32px',
+                gap: 8,
+                marginBottom: 8,
+                alignItems: 'center',
+              }}>
+                <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                  <Select
+                    placeholder="Sélectionner un produit..."
+                    style={{ width: '100%' }}
+                    value={ligne.produit_id}
+                    onChange={(v) => updateLigne(idx, 'produit_id', v)}
+                    options={produits.map(p => ({
+                      value: p.id,
+                      label: `${p.reference} — ${p.nom} (stock: ${p.stock})`,
+                    }))}
+                    showSearch
+                    filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
+                  />
+                </div>
+                <InputNumber
+                  min={1}
+                  value={ligne.quantite}
+                  onChange={(v) => updateLigne(idx, 'quantite', v)}
+                  style={{ width: '100%' }}
+                />
+                <InputNumber
+                  min={0}
+                  precision={2}
+                  value={ligne.prix_unitaire}
+                  onChange={(v) => updateLigne(idx, 'prix_unitaire', v)}
+                  style={{ width: '100%' }}
+                  addonAfter="MAD"
+                />
+                <InputNumber
+                  min={0}
+                  max={100}
+                  precision={1}
+                  value={ligne.remise || 0}
+                  onChange={(v) => updateLigne(idx, 'remise', v || 0)}
+                  style={{ width: '100%' }}
+                  addonAfter="%"
+                />
+                <div style={{ textAlign: 'right' }}>
+                  <Text strong style={{ fontSize: 12 }}>{sousTotal.toFixed(2)}</Text>
+                  <Text type="secondary" style={{ fontSize: 10 }}> MAD</Text>
+                </div>
+                <Button
+                  icon={<MinusCircleOutlined />}
+                  danger
+                  size="small"
+                  disabled={lignes.length === 1}
+                  onClick={() => removeLigne(idx)}
+                />
+              </div>
+            )
+          })}
+
+          <Button type="dashed" onClick={addLigne} icon={<PlusOutlined />} block style={{ marginTop: 4 }}>
+            + Ajouter une ligne
           </Button>
 
-          <div style={{ textAlign: 'right', marginTop: 12 }}>
-            <Text strong>
-              Total : {lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prix_unitaire || 0) * (1 - (l.remise || 0) / 100), 0).toFixed(2)} MAD
-            </Text>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, paddingRight: 40 }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 16px' }}>
+              <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>Total :</Text>
+              <Text strong style={{ fontSize: 15 }}>
+                {lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prix_unitaire || 0) * (1 - (l.remise || 0) / 100), 0).toFixed(2)} MAD
+              </Text>
+            </div>
           </div>
         </Form>
       </Modal>
 
       {/* Drawer détail */}
       <Drawer
-        title={`Bon de livraison #${selected?.id}`}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Text style={{ fontWeight: 700, fontSize: 16 }}>BL #{selected?.id}</Text>
+            {selected && (
+              <Tag color={statutColor[selected.statut]} style={{ margin: 0 }}>
+                {statutLabel[selected.statut]}
+              </Tag>
+            )}
+          </div>
+        }
         open={drawer}
         onClose={() => setDrawer(false)}
-        width={520}
+        width={720}
+        styles={{ body: { padding: 0, background: '#f8fafc' } }}
         extra={
           <Space>
             {selected && (
@@ -628,126 +671,193 @@ export default function BonsLivraison() {
           </Space>
         }
       >
-        {selected && (
-          <>
-            <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">Client</Text>
-                <Text strong>{clients.find(c => c.id === selected.client_id)?.nom}</Text>
+        {selected && (() => {
+          const client     = clients.find(c => c.id === selected.client_id)
+          const total      = totalBL(selected)
+          const qtyTotale  = selected.lignes.reduce((s, l) => s + l.quantite, 0)
+          const hasRemise  = selected.lignes.some(l => Number(l.remise || 0) > 0)
+          return (
+            <>
+              {/* ── Header gradient ── */}
+              <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', padding: '22px 24px 26px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Client</div>
+                    <div style={{ color: '#fff', fontWeight: 700, fontSize: 17, lineHeight: 1.2 }}>{client?.nom || '—'}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Date</div>
+                    <div style={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>
+                      {new Date(selected.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                  </div>
+                  {client?.adresse && (
+                    <div>
+                      <div style={{ color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Adresse</div>
+                      <div style={{ color: '#cbd5e1', fontSize: 13 }}>{client.adresse}</div>
+                    </div>
+                  )}
+                  {client?.telephone && (
+                    <div>
+                      <div style={{ color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Téléphone</div>
+                      <div style={{ color: '#cbd5e1', fontSize: 13 }}>{client.telephone}</div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">Date</Text>
-                <Text>{new Date(selected.date).toLocaleDateString('fr-FR')}</Text>
+
+              {/* ── KPI cards ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '16px 20px 4px' }}>
+                <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #10b981', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Total HT</div>
+                  <div style={{ fontWeight: 700, fontSize: 20, color: '#10b981', lineHeight: 1.1 }}>{total.toFixed(2)}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>MAD</div>
+                </Card>
+                <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #3b82f6', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Articles</div>
+                  <div style={{ fontWeight: 700, fontSize: 20, color: '#3b82f6', lineHeight: 1.1 }}>{selected.lignes.length}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>ligne{selected.lignes.length !== 1 ? 's' : ''}</div>
+                </Card>
+                <Card size="small" style={{ borderRadius: 10, borderTop: '3px solid #8b5cf6', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Qté totale</div>
+                  <div style={{ fontWeight: 700, fontSize: 20, color: '#8b5cf6', lineHeight: 1.1 }}>{qtyTotale}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>unités</div>
+                </Card>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">Statut</Text>
-                <Badge status={statutColor[selected.statut]} text={statutLabel[selected.statut]} />
-              </div>
+
+              {/* ── Notes ── */}
               {selected.notes && (
-                <div>
-                  <Text type="secondary">Notes</Text>
-                  <br />
-                  <Text>{selected.notes}</Text>
+                <div style={{ margin: '10px 20px 0', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8 }}>
+                  <div style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 3 }}>Note</div>
+                  <Text style={{ color: '#78350f', fontSize: 13 }}>{selected.notes}</Text>
                 </div>
               )}
-            </Space>
 
-            {/* ── RÈGLEMENT DIRECT (sans facture) ── */}
-            {selected.statut === 'livré' && !selected.facture_id && (
-              selected.encaisse ? (
-                <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <Text style={{ color: '#059669', fontWeight: 600, fontSize: 13 }}>
-                      <CheckCircleOutlined style={{ marginRight: 6 }} />
-                      Réglé directement — {totalBL(selected).toFixed(2)} MAD
-                    </Text>
-                    <br />
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {new Date(selected.date_encaissement).toLocaleDateString('fr-FR')} ·{' '}
-                      {{ espèces: 'Espèces', virement: 'Virement', chèque: 'Chèque', carte: 'Carte bancaire' }[selected.mode_encaissement] || selected.mode_encaissement}
-                    </Text>
-                  </div>
-                  <Space>
-                    <Tooltip title="Convertir en facture payée">
-                      <Button size="small" icon={<FileDoneOutlined />}
-                        onClick={() => { setDrawer(false); genererFacture(selected) }}
-                        style={{ color: '#7c3aed', borderColor: '#7c3aed' }}>
-                        Facture
+              {/* ── Règlement direct ── */}
+              {selected.statut === 'livré' && !selected.facture_id && (
+                <div style={{ margin: '12px 20px 0' }}>
+                  {selected.encaisse ? (
+                    <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <Text style={{ color: '#059669', fontWeight: 600, fontSize: 13 }}>
+                          <CheckCircleOutlined style={{ marginRight: 6 }} />
+                          Réglé directement — {total.toFixed(2)} MAD
+                        </Text>
+                        <br />
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {new Date(selected.date_encaissement).toLocaleDateString('fr-FR')} ·{' '}
+                          {{ espèces: 'Espèces', virement: 'Virement', chèque: 'Chèque', carte: 'Carte bancaire' }[selected.mode_encaissement] || selected.mode_encaissement}
+                        </Text>
+                      </div>
+                      <Space>
+                        <Tooltip title="Convertir en facture payée">
+                          <Button size="small" icon={<FileDoneOutlined />}
+                            onClick={() => { setDrawer(false); genererFacture(selected) }}
+                            style={{ color: '#7c3aed', borderColor: '#7c3aed' }}>
+                            Facture
+                          </Button>
+                        </Tooltip>
+                        <Popconfirm title="Annuler l'encaissement ?" onConfirm={annulerEncaissement} okText="Oui" cancelText="Non">
+                          <Button size="small" danger>Annuler</Button>
+                        </Popconfirm>
+                      </Space>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center' }}>
+                      <Button
+                        icon={<CreditCardOutlined />}
+                        onClick={() => { encForm.setFieldsValue({ date: dayjs(), mode: 'espèces' }); setEncModal(true) }}
+                        style={{ color: '#64748b', borderColor: '#cbd5e1', fontSize: 12 }}
+                      >
+                        Régler sans facture (arrangement)
                       </Button>
-                    </Tooltip>
-                    <Popconfirm title="Annuler l'encaissement ?" onConfirm={annulerEncaissement} okText="Oui" cancelText="Non">
-                      <Button size="small" danger>Annuler</Button>
-                    </Popconfirm>
-                  </Space>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div style={{ marginBottom: 14, textAlign: 'center' }}>
-                  <Button
-                    size="small"
-                    icon={<CreditCardOutlined />}
-                    onClick={() => { encForm.setFieldsValue({ date: dayjs(), mode: 'espèces' }); setEncModal(true) }}
-                    style={{ color: '#64748b', borderColor: '#cbd5e1', fontSize: 12 }}
-                  >
-                    Régler sans facture (arrangement)
-                  </Button>
-                </div>
-              )
-            )}
+              )}
 
-            <Divider />
+              {/* ── Articles ── */}
+              <div style={{ padding: '16px 20px 0' }}>
+                <Text strong style={{ fontSize: 13, color: '#1e293b', display: 'block', marginBottom: 10 }}>
+                  Détail des articles
+                </Text>
 
-            {selected.lignes.length === 0 ? (
-              <Empty description="Aucune ligne" />
-            ) : (
-              <Table
-                size="small"
-                dataSource={selected.lignes}
-                rowKey="id"
-                pagination={false}
-                columns={[
-                  {
-                    title: 'Produit',
-                    dataIndex: 'produit_id',
-                    render: (id) => {
-                      const p = produits.find(p => p.id === id)
-                      return p ? `${p.reference} — ${p.nom}` : id
-                    },
-                  },
-                  { title: 'Qté', dataIndex: 'quantite', width: 55 },
-                  {
-                    title: 'Prix unit.',
-                    dataIndex: 'prix_unitaire',
-                    width: 100,
-                    render: (v) => `${Number(v).toFixed(2)} MAD`,
-                  },
-                  {
-                    title: 'Remise',
-                    dataIndex: 'remise',
-                    width: 70,
-                    render: (v) => Number(v || 0) > 0 ? <Text type="warning">{Number(v).toFixed(1)}%</Text> : <Text type="secondary">—</Text>,
-                  },
-                  {
-                    title: 'Sous-total',
-                    width: 110,
-                    render: (_, l) => (
-                      <Text strong>{(l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100)).toFixed(2)} MAD</Text>
-                    ),
-                  },
-                ]}
-                summary={() => (
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell colSpan={3} align="right">
-                      <Text strong>Total</Text>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell>
-                      <Text strong type="danger">{totalBL(selected).toFixed(2)} MAD</Text>
-                    </Table.Summary.Cell>
-                  </Table.Summary.Row>
+                {selected.lignes.length === 0 ? (
+                  <Empty description="Aucune ligne" />
+                ) : (
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                    {/* Colonnes header */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 56px 120px 72px 110px',
+                      gap: 8,
+                      padding: '8px 14px',
+                      background: '#f1f5f9',
+                      borderBottom: '1px solid #e2e8f0',
+                    }}>
+                      {['Produit', 'Qté', 'Prix unit.', 'Remise', 'Sous-total'].map((h, i) => (
+                        <Text key={i} type="secondary" style={{ fontSize: 11, textAlign: i >= 1 ? 'right' : 'left' }}>{h}</Text>
+                      ))}
+                    </div>
+
+                    {selected.lignes.map((l, i) => {
+                      const p       = produits.find(x => x.id === l.produit_id)
+                      const remise  = Number(l.remise || 0)
+                      const sousTotal = l.quantite * Number(l.prix_unitaire) * (1 - remise / 100)
+                      return (
+                        <div key={l.id || i} style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 56px 120px 72px 110px',
+                          gap: 8,
+                          padding: '11px 14px',
+                          background: i % 2 === 0 ? '#fff' : '#f8fafc',
+                          borderBottom: i < selected.lignes.length - 1 ? '1px solid #f0f0f0' : 'none',
+                          alignItems: 'center',
+                        }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {p?.nom || '—'}
+                            </div>
+                            {p?.reference && (
+                              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{p.reference}</div>
+                            )}
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <Tag color="blue" style={{ margin: 0, fontWeight: 700, fontSize: 12 }}>{l.quantite}</Tag>
+                          </div>
+                          <Text style={{ fontSize: 12, textAlign: 'right', display: 'block', color: '#475569' }}>
+                            {Number(l.prix_unitaire).toFixed(2)} MAD
+                          </Text>
+                          <div style={{ textAlign: 'right' }}>
+                            {remise > 0
+                              ? <Tag color="orange" style={{ margin: 0, fontSize: 11 }}>{remise}%</Tag>
+                              : <Text type="secondary" style={{ fontSize: 12 }}>—</Text>
+                            }
+                          </div>
+                          <Text strong style={{ fontSize: 13, textAlign: 'right', display: 'block', color: '#1e293b' }}>
+                            {sousTotal.toFixed(2)} MAD
+                          </Text>
+                        </div>
+                      )
+                    })}
+                  </div>
                 )}
-              />
-            )}
-          </>
-        )}
+              </div>
+
+              {/* ── Total footer ── */}
+              <div style={{ margin: '16px 20px 24px', background: '#1e293b', borderRadius: 10, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ color: '#64748b', fontSize: 11, marginBottom: 2 }}>{qtyTotale} unité{qtyTotale !== 1 ? 's' : ''} · {selected.lignes.length} ligne{selected.lignes.length !== 1 ? 's' : ''}{hasRemise ? ' · avec remises' : ''}</div>
+                  <div style={{ color: '#94a3b8', fontSize: 12 }}>Total hors taxes</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ color: '#fff', fontWeight: 800, fontSize: 22, lineHeight: 1 }}>{total.toFixed(2)}</div>
+                  <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>MAD</div>
+                </div>
+              </div>
+            </>
+          )
+        })()}
       </Drawer>
     </div>
   )

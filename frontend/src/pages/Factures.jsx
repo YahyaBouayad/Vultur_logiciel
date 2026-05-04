@@ -1,7 +1,7 @@
 import {
   Table, Button, Typography, Space, Tooltip, Popconfirm,
   message, Drawer, Divider, Badge, Empty, Input, Tabs, Tag, Alert,
-  Form, Modal, DatePicker, Select, List, Popconfirm as Pop, InputNumber
+  Form, Modal, DatePicker, Select, List, Popconfirm as Pop, InputNumber, Switch
 } from 'antd'
 import {
   CheckCircleOutlined, CloseCircleOutlined, SearchOutlined, FileTextOutlined,
@@ -386,6 +386,7 @@ export default function Factures() {
       date_emission: facture.date_emission ? dayjs(facture.date_emission) : null,
       date_echeance: facture.date_echeance ? dayjs(facture.date_echeance) : null,
       notes: facture.notes || '',
+      tva_incluse: facture.tva_incluse ?? false,
     })
     setEditModal(true)
   }
@@ -397,6 +398,7 @@ export default function Factures() {
         date_emission: values.date_emission ? values.date_emission.format('YYYY-MM-DD') : null,
         date_echeance: values.date_echeance ? values.date_echeance.format('YYYY-MM-DD') : null,
         notes: values.notes || null,
+        tva_incluse: values.tva_incluse ?? false,
       })
       message.success('Facture modifiée')
       setEditModal(false)
@@ -779,10 +781,41 @@ export default function Factures() {
                 <Text type="secondary">Date d'échéance</Text>
                 <Text>{selected.date_echeance ? new Date(selected.date_echeance).toLocaleDateString('fr-FR') : '—'}</Text>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">Montant HT</Text>
-                <Text strong>{(selected.montant_ht || 0).toFixed(2)} MAD</Text>
-              </div>
+              {(() => {
+                const taux = Number(settings?.tva) || 0
+                const incluse = selected.tva_incluse === true && taux > 0
+                const rawSum = selected.montant_ht || 0
+                const ht  = incluse ? rawSum / (1 + taux / 100) : rawSum
+                const tva = ht * taux / 100
+                const ttc = ht + tva
+                return taux > 0 ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Text type="secondary">TVA</Text>
+                      <Tag color={incluse ? 'blue' : 'default'} style={{ margin: 0 }}>
+                        {incluse ? 'Prix TTC (TVA incluse)' : `HT + ${taux}% TVA`}
+                      </Tag>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Text type="secondary">Montant HT</Text>
+                      <Text strong>{ht.toFixed(2)} MAD</Text>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Text type="secondary">TVA ({taux}%)</Text>
+                      <Text>{tva.toFixed(2)} MAD</Text>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: 6 }}>
+                      <Text strong>Total TTC</Text>
+                      <Text strong style={{ color: '#0d2c6e', fontSize: 15 }}>{ttc.toFixed(2)} MAD</Text>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Text type="secondary">Montant HT</Text>
+                    <Text strong>{rawSum.toFixed(2)} MAD</Text>
+                  </div>
+                )
+              })()}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Text type="secondary">BL associé</Text>
                 <Text code>#{selected.bon_livraison_id}</Text>
@@ -1178,6 +1211,14 @@ export default function Factures() {
           <Form.Item name="date_echeance" label="Date d'échéance">
             <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Sélectionner une date" />
           </Form.Item>
+          {Number(settings?.tva) > 0 && (
+            <Form.Item name="tva_incluse" label="TVA" valuePropName="checked">
+              <Switch
+                checkedChildren="Prix TTC — TVA déjà incluse"
+                unCheckedChildren="Prix HT — TVA à ajouter"
+              />
+            </Form.Item>
+          )}
           <Form.Item name="notes" label="Notes">
             <Input.TextArea rows={3} placeholder="Remarques optionnelles..." />
           </Form.Item>

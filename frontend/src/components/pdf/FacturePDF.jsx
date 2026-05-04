@@ -95,9 +95,14 @@ export function FacturePage({ facture, client, bl, produits, entreprise = {} }) 
   const devise  = E.devise || 'MAD'
   const tauxTVA = Number(E.tva) || 0
 
-  const showRemise = E.afficherRemise !== false
-  const lignes  = bl?.lignes || []
-  const totalHT = lignes.reduce((s, l) => s + l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100), 0)
+  const showRemise  = E.afficherRemise !== false
+  const tvaIncluse  = facture.tva_incluse === true && tauxTVA > 0
+  const lignes      = bl?.lignes || []
+
+  // When tvaIncluse: stored prix_unitaire is already TTC; back-calculate HT totals
+  // When !tvaIncluse: stored prix_unitaire is HT; add TVA on top
+  const rawSum = lignes.reduce((s, l) => s + l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100), 0)
+  const totalHT    = tvaIncluse ? rawSum / (1 + tauxTVA / 100) : rawSum
   const montantTVA = totalHT * (tauxTVA / 100)
   const totalTTC   = totalHT + montantTVA
 
@@ -175,18 +180,22 @@ export function FacturePage({ facture, client, bl, produits, entreprise = {} }) 
           {lignes.map((l, i) => {
             const p = produits.find(x => x.id === l.produit_id)
             const remisePct = Number(l.remise || 0)
-            const ttc = l.quantite * Number(l.prix_unitaire) * (1 - remisePct / 100) * (1 + tauxTVA / 100)
+            // puHT: always display HT price; lineTTC: always display TTC total
+            const puHT   = tvaIncluse ? Number(l.prix_unitaire) / (1 + tauxTVA / 100) : Number(l.prix_unitaire)
+            const lineTTC = tvaIncluse
+              ? l.quantite * Number(l.prix_unitaire) * (1 - remisePct / 100)
+              : l.quantite * Number(l.prix_unitaire) * (1 - remisePct / 100) * (1 + tauxTVA / 100)
             return (
               <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
                 <Text style={[s.tdRef, s.colRef]}>{p?.reference || `#${l.produit_id}`}</Text>
                 <Text style={[s.td, s.colDesc]}>{p?.nom || '—'}</Text>
                 <Text style={[s.tdNum, s.colQty]}>{l.quantite}</Text>
-                <Text style={[s.tdNum, s.colPU]}>{fmt(l.prix_unitaire)}</Text>
+                <Text style={[s.tdNum, s.colPU]}>{fmt(puHT)}</Text>
                 {showRemise && (
                   <Text style={[s.tdNum, s.colRemise]}>{remisePct > 0 ? `${remisePct}%` : '—'}</Text>
                 )}
                 <Text style={[s.tdNum, s.colTVA]}>{tauxTVA}%</Text>
-                <Text style={[s.tdNumBold, s.colTot]}>{fmt(ttc)}</Text>
+                <Text style={[s.tdNumBold, s.colTot]}>{fmt(lineTTC)}</Text>
               </View>
             )
           })}

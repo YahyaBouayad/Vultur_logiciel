@@ -19,7 +19,7 @@ class BonLivraison(Base):
     date_encaissement = Column(Date, nullable=True)
 
     client  = relationship("Client")
-    lignes  = relationship("LigneBonLivraison", back_populates="bon_livraison", cascade="all, delete-orphan")
+    lignes  = relationship("LigneBonLivraison", back_populates="bon_livraison", cascade="all, delete-orphan", order_by="LigneBonLivraison.id")
     facture = relationship("Facture", back_populates="bon_livraison", uselist=False)
 
 

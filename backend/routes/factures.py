@@ -151,6 +151,7 @@ def create_facture(data: FactureCreate, db: Session = Depends(get_db), _: Utilis
         client_id=bl.client_id,
         date_echeance=echeance,
         notes=data.notes,
+        tva_incluse=data.tva_incluse,
     )
     db.add(facture)
     db.flush()
@@ -195,6 +196,8 @@ def update_facture(facture_id: int, data: FactureUpdate, db: Session = Depends(g
         f.date_echeance = data.date_echeance
     if data.notes is not None:
         f.notes = data.notes or None
+    if data.tva_incluse is not None:
+        f.tva_incluse = data.tva_incluse
     db.commit()
     db.refresh(f)
     return _build_out(f)

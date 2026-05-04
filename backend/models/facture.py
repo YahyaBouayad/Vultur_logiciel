@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
@@ -15,6 +15,7 @@ class Facture(Base):
     date_echeance    = Column(Date, nullable=True)
     statut           = Column(String, default="émise", nullable=False)  # émise | payée | annulée
     notes            = Column(Text, nullable=True)
+    tva_incluse      = Column(Boolean, default=False, nullable=False, server_default='false')
 
     bon_livraison = relationship("BonLivraison", back_populates="facture")
     client        = relationship("Client")
