@@ -148,7 +148,7 @@ export default function Produits() {
   const handleSortieStock = async (values) => {
     setFormLoading(true)
     try {
-      await api.post('/stock/sortie', { produit_id: sortieProduit.id, quantite: values.quantite })
+      await api.post('/stock/sortie', { produit_id: sortieProduit.id, quantite: values.quantite, notes: values.notes || null })
       message.success(`−${values.quantite} unités retirées`)
       setSortieModal(false)
       fetchProduits()
@@ -162,7 +162,7 @@ export default function Produits() {
   const handleEntreeStock = async (values) => {
     setFormLoading(true)
     try {
-      await api.post('/stock/entree', { produit_id: stockProduit.id, quantite: values.quantite })
+      await api.post('/stock/entree', { produit_id: stockProduit.id, quantite: values.quantite, notes: values.notes || null })
       message.success(`+${values.quantite} unités ajoutées`)
       setStockModal(false)
       fetchProduits()
@@ -389,6 +389,9 @@ export default function Produits() {
             rules={[{ required: true, message: 'Quantité requise' }]}>
             <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
+          <Form.Item name="notes" label="Provenance (optionnel)">
+            <Input placeholder="Ex : Achat fournisseur, Retour client, Inventaire…" />
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -408,6 +411,9 @@ export default function Produits() {
             rules={[{ required: true, message: 'Quantité requise' }]}>
             <InputNumber min={1} max={sortieProduit?.stock} style={{ width: '100%' }} />
           </Form.Item>
+          <Form.Item name="notes" label="Motif (optionnel)">
+            <Input placeholder="Ex : Casse, Usage interne, Périmé…" />
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -422,20 +428,28 @@ export default function Produits() {
           <Text type="secondary">Aucun mouvement enregistré.</Text>
         ) : (
           <Timeline
-            items={mouvements.map((m) => ({
-              color: m.type === 'entrée' ? 'green' : 'red',
-              children: (
-                <div>
-                  <Text strong style={{ color: m.type === 'entrée' ? '#10b981' : '#ef4444' }}>
-                    {m.type === 'entrée' ? '+' : '−'}{m.quantite} unités
-                  </Text>
-                  <br />
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {new Date(m.date).toLocaleString('fr-FR')}
-                  </Text>
-                </div>
-              ),
-            }))}
+            items={mouvements.map((m) => {
+              const isEntree = m.type === 'entrée'
+              const source = m.bon_livraison_id
+                ? `BL #${m.bon_livraison_id}`
+                : m.notes || (isEntree ? 'Entrée manuelle' : 'Sortie manuelle')
+              return {
+                color: isEntree ? 'green' : 'red',
+                children: (
+                  <div>
+                    <Text strong style={{ color: isEntree ? '#10b981' : '#ef4444' }}>
+                      {isEntree ? '+' : '−'}{m.quantite} unités
+                    </Text>
+                    <br />
+                    <Text style={{ fontSize: 12, color: '#64748b' }}>{source}</Text>
+                    <br />
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {new Date(m.date).toLocaleString('fr-FR')}
+                    </Text>
+                  </div>
+                ),
+              }
+            })}
           />
         )}
       </Drawer>

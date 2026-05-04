@@ -41,6 +41,7 @@ def entree_stock(data: MouvementCreate, db: Session = Depends(get_db), _: Utilis
         type="entrée",
         quantite=data.quantite,
         bon_livraison_id=data.bon_livraison_id,
+        notes=data.notes,
     )
     db.add(mouvement)
     db.commit()
@@ -65,6 +66,7 @@ def sortie_stock(data: MouvementCreate, db: Session = Depends(get_db), _: Utilis
         type="sortie",
         quantite=data.quantite,
         bon_livraison_id=data.bon_livraison_id,
+        notes=data.notes,
     )
     db.add(mouvement)
     db.commit()

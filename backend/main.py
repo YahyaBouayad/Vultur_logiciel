@@ -45,6 +45,7 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS mentions_legales TEXT"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS pied_de_page TEXT"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS afficher_remise BOOLEAN NOT NULL DEFAULT TRUE"))
+    _conn.execute(text("ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS notes VARCHAR"))
     _conn.commit()
 
 app = FastAPI(title="Vultur - Gestion d'entreprise", redirect_slashes=False)

@@ -13,6 +13,7 @@ class StockMouvement(Base):
     quantite         = Column(Integer, nullable=False)
     date             = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     bon_livraison_id = Column(Integer, ForeignKey("bons_livraison.id"), nullable=True)
+    notes            = Column(String, nullable=True)
 
     produit       = relationship("Produit")
     bon_livraison = relationship("BonLivraison")
