@@ -18,16 +18,7 @@ def _taux_tva(db: Session) -> float:
     return float(p.tva or 0) if p else 0.0
 
 
-def _montant_ht(facture, taux_tva: float = 0.0) -> float:
-    if facture.bon_livraison:
-        raw = sum(
-            float(l.prix_unitaire) * l.quantite * (1 - float(l.remise or 0) / 100)
-            for l in facture.bon_livraison.lignes
-        )
-        if facture.tva_incluse and taux_tva > 0:
-            return raw / (1 + taux_tva / 100)
-        return raw
-    return 0.0
+from utils.calculs import montant_ht_facture as _montant_ht
 
 
 def _build_suivi(facture, paiements, taux_tva: float = 0.0) -> SuiviFactureOut:
@@ -85,7 +76,6 @@ def get_paiements(facture_id: int, db: Session = Depends(get_db), _: Utilisateur
 
 @router.post("/factures/{facture_id}/paiements", response_model=PaiementOut, status_code=201)
 def create_paiement(facture_id: int, data: PaiementCreate, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
-    from models.avoir import Avoir
     facture = (
         db.query(Facture)
         .options(
@@ -132,7 +122,6 @@ def create_paiement(facture_id: int, data: PaiementCreate, db: Session = Depends
 
 @router.delete("/paiements/{paiement_id}", status_code=204)
 def delete_paiement(paiement_id: int, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
-    from models.avoir import Avoir
     p = db.query(Paiement).filter(Paiement.id == paiement_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Paiement introuvable")

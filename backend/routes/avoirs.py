@@ -50,16 +50,7 @@ def _taux_tva(db: Session) -> float:
     return float(p.tva or 0) if p else 0.0
 
 
-def _montant_ht_facture(facture, taux_tva: float = 0.0) -> float:
-    if facture.bon_livraison:
-        raw = sum(
-            float(l.prix_unitaire) * l.quantite * (1 - float(l.remise or 0) / 100)
-            for l in facture.bon_livraison.lignes
-        )
-        if facture.tva_incluse and taux_tva > 0:
-            return raw / (1 + taux_tva / 100)
-        return raw
-    return 0.0
+from utils.calculs import montant_ht_facture as _montant_ht_facture
 
 
 @router.get("/factures/{facture_id}/avoirs", response_model=List[AvoirOut])

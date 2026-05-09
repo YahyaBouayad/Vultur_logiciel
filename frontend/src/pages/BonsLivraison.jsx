@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useImpayes } from '../context/ImpayesContext'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import dayjs from 'dayjs'
 import api from '../api/axios'
@@ -56,6 +57,7 @@ export default function BonsLivraison() {
   const navigate = useNavigate()
   const location = useLocation()
   const { settings } = useSettings()
+  const { refresh: refreshImpayes } = useImpayes()
   const [form] = Form.useForm()
   const searchTimer = useRef(null)
 
@@ -233,6 +235,7 @@ export default function BonsLivraison() {
       encForm.resetFields()
       setSelected(r.data)
       loadBons(page, filterStatut, filterClient, search)
+      refreshImpayes()
     } catch (e) {
       message.error(e.response?.data?.detail || 'Erreur')
     } finally {

@@ -20,7 +20,8 @@ CYCLE = ["brouillon", "validé", "livré"]
 
 def _build_out(bl) -> BonLivraisonOut:
     out = BonLivraisonOut.model_validate(bl)
-    out.facture_id = bl.facture.id if bl.facture else None
+    # Exclure les factures annulées pour ne pas bloquer la re-facturation du BL
+    out.facture_id = bl.facture.id if (bl.facture and bl.facture.statut != "annulée") else None
     return out
 
 
@@ -182,15 +183,21 @@ def update_statut(bl_id: int, data: StatutUpdate, db: Session = Depends(get_db),
         )
 
     if data.statut == "livré":
+        # Une seule boucle avec verrouillage pour éviter le TOCTOU entre vérification et décrémentation
         for ligne in bl.lignes:
-            produit = db.query(Produit).filter(Produit.id == ligne.produit_id).first()
+            produit = (
+                db.query(Produit)
+                .filter(Produit.id == ligne.produit_id)
+                .with_for_update()
+                .first()
+            )
+            if not produit:
+                raise HTTPException(status_code=404, detail=f"Produit {ligne.produit_id} introuvable")
             if produit.stock < ligne.quantite:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Stock insuffisant pour '{produit.nom}' (disponible : {produit.stock}, requis : {ligne.quantite})",
                 )
-        for ligne in bl.lignes:
-            produit = db.query(Produit).filter(Produit.id == ligne.produit_id).first()
             produit.stock -= ligne.quantite
             db.add(StockMouvement(
                 produit_id=ligne.produit_id,

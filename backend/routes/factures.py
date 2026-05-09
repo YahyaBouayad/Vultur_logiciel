@@ -51,16 +51,7 @@ def calcul_niveau(jours: int) -> str:
     return "critique"
 
 
-def _montant_ht(facture, taux_tva: float = 0.0) -> float:
-    if facture.bon_livraison:
-        raw = sum(
-            float(l.prix_unitaire) * l.quantite * (1 - float(l.remise or 0) / 100)
-            for l in facture.bon_livraison.lignes
-        )
-        if facture.tva_incluse and taux_tva > 0:
-            return raw / (1 + taux_tva / 100)
-        return raw
-    return 0.0
+from utils.calculs import montant_ht_facture as _montant_ht
 
 
 def _build_out(f, taux_tva: float = 0.0) -> FactureOut:

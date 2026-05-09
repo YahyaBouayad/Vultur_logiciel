@@ -53,7 +53,7 @@ export default function SuiviPaiements() {
 
   const [search, setSearch]             = useState('')
   const [filterClient, setFilterClient] = useState(null)
-  const [activeTab, setActiveTab]       = useState('soldes')
+  const [activeTab, setActiveTab]       = useState('en_attente')
 
   const [blsEnAttente, setBlsEnAttente] = useState([])
 
@@ -101,10 +101,15 @@ export default function SuiviPaiements() {
     })
   }, [data, search, filterClient, clients])
 
-  // Répartition par onglet
+  // Répartition par onglet (pour la table — suit les filtres)
   const soldesRestants    = useMemo(() => filtered.filter(r => statutPaiement(r) === 'en_attente'), [filtered])
   const paiementsPartiels = useMemo(() => filtered.filter(r => statutPaiement(r) === 'partiel'), [filtered])
   const facturesPayees    = useMemo(() => filtered.filter(r => statutPaiement(r) === 'soldee'), [filtered])
+
+  // Totaux non filtrés pour les KPI (vue globale indépendante des filtres)
+  const allSoldesRestants    = useMemo(() => data.filter(r => statutPaiement(r) === 'en_attente'), [data])
+  const allPaiementsPartiels = useMemo(() => data.filter(r => statutPaiement(r) === 'partiel'), [data])
+  const allFacturesPayees    = useMemo(() => data.filter(r => statutPaiement(r) === 'soldee'), [data])
 
   const totalBL = (bl) =>
     bl.lignes.reduce((s, l) => s + l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100), 0)
@@ -129,13 +134,13 @@ export default function SuiviPaiements() {
     })
   }, [encaisses, search, filterClient, clients])
 
-  // KPIs
-  const totalEncaisseFactures = useMemo(() => filtered.reduce((s, r) => s + r.montant_paye, 0), [filtered])
-  const totalEncaisseDirects  = useMemo(() => encaissesFiltres.reduce((s, r) => s + r.montant, 0), [encaissesFiltres])
+  // KPIs — toujours calculés sur les données non filtrées (vue globale)
+  const totalEncaisseFactures = useMemo(() => data.reduce((s, r) => s + r.montant_paye, 0), [data])
+  const totalEncaisseDirects  = useMemo(() => encaisses.reduce((s, r) => s + r.montant, 0), [encaisses])
   const totalEncaisse  = totalEncaisseFactures + totalEncaisseDirects
-  const resteRecouvrer = useMemo(() => soldesRestants.reduce((s, r) => s + r.solde, 0), [soldesRestants])
-  const restePartiel   = useMemo(() => paiementsPartiels.reduce((s, r) => s + r.solde, 0), [paiementsPartiels])
-  const totalBLAttente = useMemo(() => blsEnAttenteFiltres.reduce((s, r) => s + totalBL(r), 0), [blsEnAttenteFiltres])
+  const resteRecouvrer = useMemo(() => allSoldesRestants.reduce((s, r) => s + r.solde, 0), [allSoldesRestants])
+  const restePartiel   = useMemo(() => allPaiementsPartiels.reduce((s, r) => s + r.solde, 0), [allPaiementsPartiels])
+  const totalBLAttente = useMemo(() => blsEnAttente.reduce((s, r) => s + totalBL(r), 0), [blsEnAttente])
 
   // Table selon onglet
   const tableData = activeTab === 'soldes'    ? soldesRestants
@@ -512,7 +517,7 @@ export default function SuiviPaiements() {
               prefix={<ArrowUpOutlined />}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''} soldée{facturesPayees.length !== 1 ? 's' : ''}
+              {allFacturesPayees.length} facture{allFacturesPayees.length !== 1 ? 's' : ''} soldée{allFacturesPayees.length !== 1 ? 's' : ''}
               {totalEncaisseDirects > 0 && ` · dont ${fmt(totalEncaisseDirects)} MAD direct`}
             </Text>
           </Card>
@@ -527,7 +532,7 @@ export default function SuiviPaiements() {
               prefix={<ClockCircleOutlined />}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {blsEnAttenteFiltres.length} BL livré{blsEnAttenteFiltres.length !== 1 ? 's' : ''} sans règlement
+              {blsEnAttente.length} BL livré{blsEnAttente.length !== 1 ? 's' : ''} sans règlement
             </Text>
           </Card>
         </Col>
@@ -540,7 +545,7 @@ export default function SuiviPaiements() {
               valueStyle={{ color: '#ef4444', fontWeight: 700 }}
               prefix={<ExclamationCircleOutlined />}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>{soldesRestants.length} facture{soldesRestants.length !== 1 ? 's' : ''} en attente</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>{allSoldesRestants.length} facture{allSoldesRestants.length !== 1 ? 's' : ''} en attente</Text>
           </Card>
         </Col>
         <Col xs={24} sm={6}>
@@ -552,7 +557,7 @@ export default function SuiviPaiements() {
               valueStyle={{ color: '#3b82f6', fontWeight: 700 }}
               prefix={<PieChartOutlined />}
             />
-            <Text type="secondary" style={{ fontSize: 12 }}>{paiementsPartiels.length} paiement{paiementsPartiels.length !== 1 ? 's' : ''} partiel{paiementsPartiels.length !== 1 ? 's' : ''}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>{allPaiementsPartiels.length} paiement{allPaiementsPartiels.length !== 1 ? 's' : ''} partiel{allPaiementsPartiels.length !== 1 ? 's' : ''}</Text>
           </Card>
         </Col>
       </Row>
