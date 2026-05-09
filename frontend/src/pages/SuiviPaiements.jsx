@@ -6,7 +6,7 @@ import {
 import {
   CheckCircleOutlined, ExclamationCircleOutlined, PieChartOutlined,
   SearchOutlined, PlusOutlined, DeleteOutlined, ArrowUpOutlined,
-  WalletOutlined,
+  WalletOutlined, FileDoneOutlined, CreditCardOutlined, ClockCircleOutlined,
 } from '@ant-design/icons'
 import { useEffect, useState, useMemo } from 'react'
 import dayjs from 'dayjs'
@@ -55,22 +55,31 @@ export default function SuiviPaiements() {
   const [filterClient, setFilterClient] = useState(null)
   const [activeTab, setActiveTab]       = useState('soldes')
 
+  const [blsEnAttente, setBlsEnAttente] = useState([])
+
   const [paiModal, setPaiModal]       = useState(false)
   const [paiRow, setPaiRow]           = useState(null)
   const [paiSubmitting, setPaiSubmitting] = useState(false)
   const [paiForm] = Form.useForm()
 
+  const [encBlModal, setEncBlModal]           = useState(false)
+  const [encBlSelected, setEncBlSelected]     = useState(null)
+  const [encBlSubmitting, setEncBlSubmitting] = useState(false)
+  const [encBlForm] = Form.useForm()
+
   const load = async () => {
     setLoading(true)
     try {
-      const [sv, cl, enc] = await Promise.all([
+      const [sv, cl, enc, bls] = await Promise.all([
         api.get('/suivi-paiements'),
         api.get('/clients'),
         api.get('/bons-livraison/encaisses'),
+        api.get('/bons-livraison', { params: { statut: 'livré', limit: 500 } }),
       ])
       setData(sv.data)
       setClients(cl.data)
       setEncaisses(enc.data)
+      setBlsEnAttente(bls.data.items.filter(bl => !bl.facture_id && !bl.encaisse))
     } catch {
       setData([])
     } finally {
@@ -97,6 +106,19 @@ export default function SuiviPaiements() {
   const paiementsPartiels = useMemo(() => filtered.filter(r => statutPaiement(r) === 'partiel'), [filtered])
   const facturesPayees    = useMemo(() => filtered.filter(r => statutPaiement(r) === 'soldee'), [filtered])
 
+  const totalBL = (bl) =>
+    bl.lignes.reduce((s, l) => s + l.quantite * Number(l.prix_unitaire) * (1 - Number(l.remise || 0) / 100), 0)
+
+  // BLs livrés sans facture et non encaissés
+  const blsEnAttenteFiltres = useMemo(() => {
+    const q = search.toLowerCase()
+    return blsEnAttente.filter(r => {
+      const matchClient = !filterClient || r.client_id === filterClient
+      const matchSearch = !q || `bl #${r.id}`.includes(q) || nomClient(r.client_id).toLowerCase().includes(q)
+      return matchClient && matchSearch
+    })
+  }, [blsEnAttente, search, filterClient, clients])
+
   // Filtrage encaissements directs (BL sans facture)
   const encaissesFiltres = useMemo(() => {
     const q = search.toLowerCase()
@@ -113,6 +135,7 @@ export default function SuiviPaiements() {
   const totalEncaisse  = totalEncaisseFactures + totalEncaisseDirects
   const resteRecouvrer = useMemo(() => soldesRestants.reduce((s, r) => s + r.solde, 0), [soldesRestants])
   const restePartiel   = useMemo(() => paiementsPartiels.reduce((s, r) => s + r.solde, 0), [paiementsPartiels])
+  const totalBLAttente = useMemo(() => blsEnAttenteFiltres.reduce((s, r) => s + totalBL(r), 0), [blsEnAttenteFiltres])
 
   // Table selon onglet
   const tableData = activeTab === 'soldes'    ? soldesRestants
@@ -143,6 +166,42 @@ export default function SuiviPaiements() {
       message.error(e.response?.data?.detail || 'Erreur')
     } finally {
       setPaiSubmitting(false)
+    }
+  }
+
+  const genererFactureBL = async (bl) => {
+    try {
+      await api.post('/factures', { bon_livraison_id: bl.id })
+      message.success('Facture générée — BL #' + bl.id)
+      await load()
+      refreshImpayes()
+    } catch (e) {
+      message.error(e.response?.data?.detail || 'Erreur')
+    }
+  }
+
+  const openEncBlModal = (bl) => {
+    setEncBlSelected(bl)
+    encBlForm.setFieldsValue({ date: dayjs(), mode: 'espèces' })
+    setEncBlModal(true)
+  }
+
+  const submitEncBl = async (values) => {
+    setEncBlSubmitting(true)
+    try {
+      await api.put(`/bons-livraison/${encBlSelected.id}/encaisser`, {
+        mode_encaissement: values.mode,
+        date_encaissement: values.date.format('YYYY-MM-DD'),
+      })
+      message.success('BL #' + encBlSelected.id + ' marqué comme réglé')
+      setEncBlModal(false)
+      encBlForm.resetFields()
+      await load()
+      refreshImpayes()
+    } catch (e) {
+      message.error(e.response?.data?.detail || 'Erreur')
+    } finally {
+      setEncBlSubmitting(false)
     }
   }
 
@@ -273,6 +332,56 @@ export default function SuiviPaiements() {
     )
   }
 
+  const columnsBLAttente = [
+    {
+      title: 'Référence BL',
+      key: 'ref',
+      width: 130,
+      render: (_, r) => <Text code style={{ fontWeight: 600 }}>BL #{r.id}</Text>,
+    },
+    {
+      title: 'Client',
+      dataIndex: 'client_id',
+      render: id => <Text strong>{nomClient(id)}</Text>,
+    },
+    {
+      title: 'Date livraison',
+      dataIndex: 'date',
+      width: 140,
+      render: v => new Date(v).toLocaleDateString('fr-FR'),
+    },
+    {
+      title: 'Montant',
+      key: 'montant',
+      width: 150,
+      align: 'right',
+      render: (_, r) => <Text strong style={{ color: '#f59e0b' }}>{fmt(totalBL(r))} MAD</Text>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 220,
+      render: (_, r) => (
+        <Space size={6}>
+          <Tooltip title="Générer la facture">
+            <Button size="small" icon={<FileDoneOutlined />}
+              onClick={() => genererFactureBL(r)}
+              style={{ color: '#10b981', borderColor: '#10b981' }}>
+              Facturer
+            </Button>
+          </Tooltip>
+          <Tooltip title="Régler sans facture">
+            <Button size="small" icon={<CreditCardOutlined />}
+              onClick={() => openEncBlModal(r)}
+              style={{ color: '#64748b', borderColor: '#cbd5e1' }}>
+              Régler
+            </Button>
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ]
+
   const columnsDirects = [
     {
       title: 'Référence BL',
@@ -313,6 +422,20 @@ export default function SuiviPaiements() {
   ]
 
   const tabItems = [
+    {
+      key: 'en_attente',
+      label: (
+        <span>
+          <ClockCircleOutlined style={{ marginRight: 5 }} />
+          BL non réglés
+          {blsEnAttenteFiltres.length > 0 && (
+            <span style={{ marginLeft: 6, background: '#f59e0b', color: '#fff', borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 7px' }}>
+              {blsEnAttenteFiltres.length}
+            </span>
+          )}
+        </span>
+      ),
+    },
     {
       key: 'soldes',
       label: (
@@ -379,7 +502,7 @@ export default function SuiviPaiements() {
 
       {/* KPIs */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card style={{ borderRadius: 10, borderTop: '3px solid #10b981' }}>
             <Statistic
               title="Total encaissé"
@@ -389,12 +512,26 @@ export default function SuiviPaiements() {
               prefix={<ArrowUpOutlined />}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-          {facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''} soldée{facturesPayees.length !== 1 ? 's' : ''}
-          {totalEncaisseDirects > 0 && ` · dont ${fmt(totalEncaisseDirects)} MAD en règlement direct`}
-        </Text>
+              {facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''} soldée{facturesPayees.length !== 1 ? 's' : ''}
+              {totalEncaisseDirects > 0 && ` · dont ${fmt(totalEncaisseDirects)} MAD direct`}
+            </Text>
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
+          <Card style={{ borderRadius: 10, borderTop: '3px solid #f59e0b' }}>
+            <Statistic
+              title="BL non réglés"
+              value={fmt(totalBLAttente)}
+              suffix="MAD"
+              valueStyle={{ color: '#f59e0b', fontWeight: 700 }}
+              prefix={<ClockCircleOutlined />}
+            />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {blsEnAttenteFiltres.length} BL livré{blsEnAttenteFiltres.length !== 1 ? 's' : ''} sans règlement
+            </Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
           <Card style={{ borderRadius: 10, borderTop: '3px solid #ef4444' }}>
             <Statistic
               title="Reste à recouvrer"
@@ -406,7 +543,7 @@ export default function SuiviPaiements() {
             <Text type="secondary" style={{ fontSize: 12 }}>{soldesRestants.length} facture{soldesRestants.length !== 1 ? 's' : ''} en attente</Text>
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card style={{ borderRadius: 10, borderTop: '3px solid #3b82f6' }}>
             <Statistic
               title="Reste sur partiel"
@@ -445,7 +582,16 @@ export default function SuiviPaiements() {
 
         <Tabs items={tabItems} activeKey={activeTab} onChange={setActiveTab} style={{ marginBottom: 4 }} />
 
-        {activeTab === 'directs' ? (
+        {activeTab === 'en_attente' ? (
+          <Table
+            columns={columnsBLAttente}
+            dataSource={blsEnAttenteFiltres}
+            rowKey="id"
+            loading={loading}
+            pagination={{ pageSize: 15, showTotal: t => `${t} BL en attente`, showSizeChanger: false }}
+            locale={{ emptyText: 'Aucun BL livré sans règlement' }}
+          />
+        ) : activeTab === 'directs' ? (
           <Table
             columns={columnsDirects}
             dataSource={encaissesFiltres}
@@ -469,6 +615,43 @@ export default function SuiviPaiements() {
           />
         )}
       </div>
+
+      {/* Modal régler BL sans facture */}
+      <Modal
+        title={
+          <Space>
+            <CreditCardOutlined style={{ color: '#64748b' }} />
+            Régler sans facture — BL #{encBlSelected?.id}
+          </Space>
+        }
+        open={encBlModal}
+        onCancel={() => setEncBlModal(false)}
+        onOk={() => encBlForm.submit()}
+        okText="Confirmer le règlement"
+        cancelText="Annuler"
+        confirmLoading={encBlSubmitting}
+        width={420}
+      >
+        {encBlSelected && (
+          <div style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 14px', marginBottom: 16 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Montant total : <Text strong>{fmt(totalBL(encBlSelected))} MAD</Text>
+            </Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+              Aucune facture ne sera créée. Le BL passera en "Réglé direct".
+            </Text>
+          </div>
+        )}
+        <Form form={encBlForm} layout="vertical" onFinish={submitEncBl}>
+          <Form.Item name="date" label="Date du règlement" rules={[{ required: true, message: 'Date requise' }]}>
+            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+          </Form.Item>
+          <Form.Item name="mode" label="Mode de paiement" rules={[{ required: true, message: 'Mode requis' }]}>
+            <Select options={MODE_OPTIONS} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Modal enregistrer paiement */}
       <Modal
