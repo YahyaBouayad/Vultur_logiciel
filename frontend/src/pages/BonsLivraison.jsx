@@ -369,12 +369,24 @@ export default function BonsLivraison() {
                   </Space>
                 )
                 : (
-                  <Tooltip title="Générer la facture">
-                    <Button size="small" icon={<FileDoneOutlined />}
-                      onClick={() => genererFacture(record)}
-                      style={{ color: '#10b981', borderColor: '#10b981' }}
-                    />
-                  </Tooltip>
+                  <Space size={2}>
+                    <Tooltip title="Générer la facture">
+                      <Button size="small" icon={<FileDoneOutlined />}
+                        onClick={() => genererFacture(record)}
+                        style={{ color: '#10b981', borderColor: '#10b981' }}
+                      />
+                    </Tooltip>
+                    <Tooltip title="Régler sans facture">
+                      <Button size="small" icon={<CreditCardOutlined />}
+                        onClick={() => {
+                          setSelected(record)
+                          encForm.setFieldsValue({ date: dayjs(), mode: 'espèces' })
+                          setEncModal(true)
+                        }}
+                        style={{ color: '#64748b', borderColor: '#cbd5e1' }}
+                      />
+                    </Tooltip>
+                  </Space>
                 )
           )}
           {record.statut !== 'livré' && (
