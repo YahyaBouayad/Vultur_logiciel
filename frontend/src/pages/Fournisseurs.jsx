@@ -8,7 +8,7 @@ import {
   UserOutlined, BankOutlined, PhoneOutlined, MailOutlined,
   EnvironmentOutlined, HistoryOutlined, FileTextOutlined,
   CheckCircleOutlined, ClockCircleOutlined, RiseOutlined,
-  FilePdfOutlined,
+  FilePdfOutlined, CreditCardOutlined,
 } from '@ant-design/icons'
 import { useEffect, useState, useMemo } from 'react'
 import api from '../api/axios'
@@ -37,6 +37,9 @@ export default function Fournisseurs() {
   const [drawerFourn, setDrawerFourn]   = useState(null)
   const [historique, setHistorique]     = useState([])
   const [histLoading, setHistLoading]   = useState(false)
+
+  const [ribModal, setRibModal]         = useState(false)
+  const [ribFourn, setRibFourn]         = useState(null)
 
   const [form] = Form.useForm()
 
@@ -268,6 +271,23 @@ export default function Fournisseurs() {
       render: (v) => v ? <Text code>{v}</Text> : <Text type="secondary">—</Text>,
     },
     {
+      title: 'RIB',
+      key: 'rib',
+      width: 150,
+      render: (_, record) => record.rib
+        ? (
+          <Button
+            size="small"
+            icon={<CreditCardOutlined />}
+            onClick={() => { setRibFourn(record); setRibModal(true) }}
+            style={{ color: '#64748b', borderColor: '#cbd5e1', fontSize: 12 }}
+          >
+            Afficher le RIB
+          </Button>
+        )
+        : <Text type="secondary">—</Text>,
+    },
+    {
       title: 'Actions',
       key: 'actions',
       width: 130,
@@ -361,6 +381,9 @@ export default function Fournisseurs() {
               <Input placeholder="Ex : 001234567000012" maxLength={15} />
             </Form.Item>
           )}
+          <Form.Item name="rib" label="RIB bancaire">
+            <Input placeholder="Ex : 011 780 0001234567890123 45" />
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -414,7 +437,16 @@ export default function Fournisseurs() {
                 </Space>
               </Col>
             )}
-            {!drawerFourn?.telephone && !drawerFourn?.mail && !drawerFourn?.adresse && !drawerFourn?.contact && (
+            {drawerFourn?.rib && (
+              <Col xs={24}>
+                <Space>
+                  <CreditCardOutlined style={{ color: '#64748b' }} />
+                  <Text type="secondary">RIB :</Text>
+                  <Text code style={{ letterSpacing: 0.5 }}>{drawerFourn.rib}</Text>
+                </Space>
+              </Col>
+            )}
+            {!drawerFourn?.telephone && !drawerFourn?.mail && !drawerFourn?.adresse && !drawerFourn?.contact && !drawerFourn?.rib && (
               <Col xs={24}><Text type="secondary">Aucune coordonnée renseignée</Text></Col>
             )}
           </Row>
@@ -514,6 +546,29 @@ export default function Fournisseurs() {
           )}
         </Card>
       </Drawer>
+
+      {/* Modal RIB */}
+      <Modal
+        title={
+          <Space>
+            <CreditCardOutlined style={{ color: '#64748b' }} />
+            RIB bancaire — {ribFourn?.nom}
+          </Space>
+        }
+        open={ribModal}
+        onCancel={() => setRibModal(false)}
+        footer={null}
+        width={400}
+      >
+        {ribFourn?.rib && (
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px 20px', textAlign: 'center' }}>
+            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>Relevé d'Identité Bancaire</Text>
+            <Text style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 700, letterSpacing: 1.5, color: '#1e293b' }}>
+              {ribFourn.rib}
+            </Text>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

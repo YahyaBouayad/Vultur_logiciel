@@ -13,3 +13,4 @@ class Fournisseur(Base):
     adresse     = Column(String, nullable=True)
     mail        = Column(String, nullable=True)
     ice         = Column(String, nullable=True)  # NULL si particulier = True
+    rib         = Column(String, nullable=True)

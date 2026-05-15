@@ -10,6 +10,7 @@ class FournisseurCreate(BaseModel):
     adresse: Optional[str] = None
     mail: Optional[str] = None
     ice: Optional[str] = None
+    rib: Optional[str] = None
 
 
 class FournisseurUpdate(BaseModel):
@@ -20,6 +21,7 @@ class FournisseurUpdate(BaseModel):
     adresse: Optional[str] = None
     mail: Optional[str] = None
     ice: Optional[str] = None
+    rib: Optional[str] = None
 
 
 class FournisseurOut(BaseModel):
@@ -31,6 +33,7 @@ class FournisseurOut(BaseModel):
     adresse: Optional[str]
     mail: Optional[str]
     ice: Optional[str]
+    rib: Optional[str]
 
     class Config:
         from_attributes = True
