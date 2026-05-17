@@ -34,7 +34,7 @@ def entree_stock(data: MouvementCreate, db: Session = Depends(get_db), _: Utilis
     if data.quantite <= 0:
         raise HTTPException(status_code=400, detail="La quantité doit être positive")
 
-    produit.stock += data.quantite
+    produit.stock = float(produit.stock) + data.quantite
 
     mouvement = StockMouvement(
         produit_id=data.produit_id,
@@ -56,10 +56,10 @@ def sortie_stock(data: MouvementCreate, db: Session = Depends(get_db), _: Utilis
         raise HTTPException(status_code=404, detail="Produit introuvable")
     if data.quantite <= 0:
         raise HTTPException(status_code=400, detail="La quantité doit être positive")
-    if produit.stock < data.quantite:
-        raise HTTPException(status_code=400, detail=f"Stock insuffisant (disponible : {produit.stock})")
+    if float(produit.stock) < data.quantite:
+        raise HTTPException(status_code=400, detail=f"Stock insuffisant (disponible : {float(produit.stock)})")
 
-    produit.stock -= data.quantite
+    produit.stock = float(produit.stock) - data.quantite
 
     mouvement = StockMouvement(
         produit_id=data.produit_id,

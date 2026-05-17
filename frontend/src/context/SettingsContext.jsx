@@ -26,6 +26,10 @@ export const DEFAULT_SETTINGS = {
   mentionsLegales: '',
   piedDePage: '',
   afficherRemise: true,
+  // Production
+  prodAfficherCout: true,
+  prodAfficherBatches: true,
+  prodAfficherStats: true,
 }
 
 // snake_case API → camelCase frontend
@@ -49,6 +53,9 @@ function fromApi(data) {
     mentionsLegales:    data.mentions_legales    ?? '',
     piedDePage:         data.pied_de_page        ?? '',
     afficherRemise:     data.afficher_remise     ?? true,
+    prodAfficherCout:    data.prod_afficher_cout    ?? true,
+    prodAfficherBatches: data.prod_afficher_batches ?? true,
+    prodAfficherStats:   data.prod_afficher_stats   ?? true,
   }
 }
 
@@ -61,7 +68,10 @@ const CAMEL_TO_SNAKE = {
   conditionsPaiement: 'conditions_paiement',
   mentionsLegales:    'mentions_legales',
   piedDePage:         'pied_de_page',
-  afficherRemise:     'afficher_remise',
+  afficherRemise:      'afficher_remise',
+  prodAfficherCout:    'prod_afficher_cout',
+  prodAfficherBatches: 'prod_afficher_batches',
+  prodAfficherStats:   'prod_afficher_stats',
 }
 
 function toApi(updates) {

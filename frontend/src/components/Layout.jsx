@@ -5,6 +5,7 @@ import {
   UserOutlined, FileDoneOutlined, AppstoreOutlined,
   ShoppingOutlined, DatabaseOutlined, SettingOutlined,
   AccountBookOutlined, FileProtectOutlined, CreditCardOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -67,6 +68,11 @@ function buildMenuItems(nbRetard) {
         { key: '/clients',      icon: <TeamOutlined />,  label: 'Clients' },
         { key: '/fournisseurs', icon: <ShopOutlined />,  label: 'Fournisseurs' },
       ],
+    },
+    {
+      key: '/production',
+      icon: <ExperimentOutlined />,
+      label: 'Production',
     },
     {
       key: '/comptabilite',

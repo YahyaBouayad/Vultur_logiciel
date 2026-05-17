@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from database import engine, Base
 import models  # noqa: enregistre tous les modèles sur Base
-from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth, parametres
+from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth, parametres, recettes, production
 
 Base.metadata.create_all(bind=engine)
 
@@ -47,6 +47,49 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS afficher_remise BOOLEAN NOT NULL DEFAULT TRUE"))
     _conn.execute(text("ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS notes VARCHAR"))
     _conn.execute(text("ALTER TABLE fournisseurs ADD COLUMN IF NOT EXISTS rib VARCHAR"))
+    # Production module — nouvelles colonnes et tables
+    _conn.execute(text("ALTER TABLE produits ADD COLUMN IF NOT EXISTS unite VARCHAR NOT NULL DEFAULT 'unité'"))
+    _conn.execute(text("ALTER TABLE produits ALTER COLUMN stock TYPE NUMERIC(12,3) USING stock::numeric"))
+    _conn.execute(text("ALTER TABLE stock_mouvements ALTER COLUMN quantite TYPE NUMERIC(12,3) USING quantite::numeric"))
+    _conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS recettes (
+            id SERIAL PRIMARY KEY,
+            produit_id INTEGER NOT NULL UNIQUE REFERENCES produits(id),
+            quantite_produite NUMERIC(12,3) NOT NULL,
+            notes TEXT
+        )
+    """))
+    _conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS ordres_fabrication (
+            id SERIAL PRIMARY KEY,
+            recette_id INTEGER NOT NULL REFERENCES recettes(id),
+            produit_id INTEGER NOT NULL REFERENCES produits(id),
+            nombre_batches NUMERIC(12,3) NOT NULL,
+            quantite_produite NUMERIC(12,3) NOT NULL,
+            date DATE NOT NULL,
+            notes TEXT
+        )
+    """))
+    _conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS lignes_recette (
+            id SERIAL PRIMARY KEY,
+            recette_id INTEGER NOT NULL REFERENCES recettes(id) ON DELETE CASCADE,
+            produit_id INTEGER NOT NULL REFERENCES produits(id),
+            quantite NUMERIC(12,3) NOT NULL
+        )
+    """))
+    _conn.execute(text("ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS ordre_fabrication_id INTEGER REFERENCES ordres_fabrication(id)"))
+    _conn.execute(text("ALTER TABLE ordres_fabrication ADD COLUMN IF NOT EXISTS quantite_reelle NUMERIC(12,3)"))
+    _conn.execute(text("ALTER TABLE ordres_fabrication ADD COLUMN IF NOT EXISTS perte NUMERIC(12,3) NOT NULL DEFAULT 0"))
+    _conn.execute(text("ALTER TABLE ordres_fabrication ADD COLUMN IF NOT EXISTS cout_production NUMERIC(12,2) NOT NULL DEFAULT 0"))
+    _conn.execute(text("ALTER TABLE ordres_fabrication ADD COLUMN IF NOT EXISTS cout_unitaire NUMERIC(12,4) NOT NULL DEFAULT 0"))
+    # Remplir quantite_reelle pour les ordres existants (= quantite_produite, perte = 0)
+    _conn.execute(text("UPDATE ordres_fabrication SET quantite_reelle = quantite_produite WHERE quantite_reelle IS NULL"))
+    _conn.execute(text("ALTER TABLE ordres_fabrication ALTER COLUMN quantite_reelle SET NOT NULL"))
+    # Paramètres d'affichage production
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prod_afficher_cout BOOLEAN NOT NULL DEFAULT TRUE"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prod_afficher_batches BOOLEAN NOT NULL DEFAULT TRUE"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prod_afficher_stats BOOLEAN NOT NULL DEFAULT TRUE"))
     _conn.commit()
 
 app = FastAPI(title="Vultur - Gestion d'entreprise", redirect_slashes=False)
@@ -71,6 +114,8 @@ app.include_router(relances.router)
 app.include_router(avoirs.router)
 app.include_router(paiements.router)
 app.include_router(parametres.router)
+app.include_router(recettes.router)
+app.include_router(production.router)
 
 
 @app.get("/")

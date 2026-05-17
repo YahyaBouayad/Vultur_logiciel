@@ -3,6 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
 from models.produit import Produit
+from models.stock_mouvement import StockMouvement
+from models.bon_livraison import LigneBonLivraison
+from models.bon_commande import LigneBonCommande
+from models.recette import Recette, LigneRecette
+from models.ordre_fabrication import OrdreFabrication
 from models.utilisateur import Utilisateur
 from schemas.produit import ProduitCreate, ProduitUpdate, ProduitOut
 from security import get_current_user
@@ -52,5 +57,18 @@ def delete_produit(produit_id: int, db: Session = Depends(get_db), _: Utilisateu
     produit = db.query(Produit).filter(Produit.id == produit_id).first()
     if not produit:
         raise HTTPException(status_code=404, detail="Produit introuvable")
+
+    if db.query(LigneBonLivraison).filter(LigneBonLivraison.produit_id == produit_id).first():
+        raise HTTPException(status_code=400, detail="Impossible de supprimer : ce produit est utilisé dans des bons de livraison.")
+    if db.query(LigneBonCommande).filter(LigneBonCommande.produit_id == produit_id).first():
+        raise HTTPException(status_code=400, detail="Impossible de supprimer : ce produit est utilisé dans des bons de commande.")
+    if db.query(Recette).filter(Recette.produit_id == produit_id).first():
+        raise HTTPException(status_code=400, detail="Impossible de supprimer : ce produit est le produit fini d'une recette. Supprimez d'abord la recette.")
+    if db.query(LigneRecette).filter(LigneRecette.produit_id == produit_id).first():
+        raise HTTPException(status_code=400, detail="Impossible de supprimer : ce produit est utilisé comme ingrédient dans une recette.")
+    if db.query(OrdreFabrication).filter(OrdreFabrication.produit_id == produit_id).first():
+        raise HTTPException(status_code=400, detail="Impossible de supprimer : ce produit apparaît dans l'historique de fabrication.")
+
+    db.query(StockMouvement).filter(StockMouvement.produit_id == produit_id).delete()
     db.delete(produit)
     db.commit()

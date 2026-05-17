@@ -18,6 +18,7 @@ import Parametres from './pages/Parametres'
 import Comptabilite from './pages/Comptabilite'
 import Avoirs from './pages/Avoirs'
 import SuiviPaiements from './pages/SuiviPaiements'
+import Production from './pages/Production'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -41,6 +42,7 @@ function AppRoutes() {
         <Route path="comptabilite" element={<Comptabilite />} />
         <Route path="avoirs" element={<Avoirs />} />
         <Route path="suivi-paiements" element={<SuiviPaiements />} />
+        <Route path="production" element={<Production />} />
         <Route path="admin" element={<Admin />} />
         <Route path="parametres" element={<Parametres />} />
       </Route>

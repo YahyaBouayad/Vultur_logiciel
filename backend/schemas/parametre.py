@@ -29,6 +29,9 @@ class ParametreOut(BaseModel):
     mentions_legales: Optional[str] = None
     pied_de_page: Optional[str] = None
     afficher_remise: bool = True
+    prod_afficher_cout: bool = True
+    prod_afficher_batches: bool = True
+    prod_afficher_stats: bool = True
 
     class Config:
         from_attributes = True
@@ -60,6 +63,9 @@ class ParametreUpdate(BaseModel):
     mentions_legales: Optional[str] = None
     pied_de_page: Optional[str] = None
     afficher_remise: Optional[bool] = None
+    prod_afficher_cout: Optional[bool] = None
+    prod_afficher_batches: Optional[bool] = None
+    prod_afficher_stats: Optional[bool] = None
 
     @field_validator('compteur_facture')
     @classmethod

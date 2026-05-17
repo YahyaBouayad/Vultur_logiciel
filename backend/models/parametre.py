@@ -31,3 +31,8 @@ class Parametre(Base):
     mentions_legales    = Column(Text,    nullable=True)
     pied_de_page        = Column(Text,    nullable=True)
     afficher_remise     = Column(Boolean, nullable=False, default=True, server_default='true')
+
+    # Affichage Production
+    prod_afficher_cout    = Column(Boolean, nullable=False, default=True, server_default='true')
+    prod_afficher_batches = Column(Boolean, nullable=False, default=True, server_default='true')
+    prod_afficher_stats   = Column(Boolean, nullable=False, default=True, server_default='true')

@@ -6,7 +6,7 @@ import {
 import {
   BankOutlined, FileTextOutlined, LockOutlined, SaveOutlined,
   InfoCircleOutlined, UploadOutlined, DeleteOutlined, BgColorsOutlined,
-  PercentageOutlined,
+  PercentageOutlined, ExperimentOutlined, EyeOutlined,
 } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
@@ -513,6 +513,60 @@ function OngletPDF({ settings, saveSettings }) {
   )
 }
 
+/* ─── Onglet : Production ────────────────────────────────── */
+function OngletProduction({ settings, saveSettings }) {
+  const toggle = (key, label) => (val) => {
+    saveSettings({ [key]: val })
+    message.success(val ? `${label} activé` : `${label} désactivé`)
+  }
+
+  const items = [
+    {
+      key: 'prodAfficherCout',
+      label: 'Coût de revient',
+      desc: 'Affiche le coût total de production et le coût unitaire dans l\'historique des fabrications.',
+    },
+    {
+      key: 'prodAfficherBatches',
+      label: 'Batches réalisables',
+      desc: 'Affiche sur chaque recette le nombre maximum de batches pouvant être lancés avec le stock actuel.',
+    },
+    {
+      key: 'prodAfficherStats',
+      label: 'Statistiques de pertes',
+      desc: 'Affiche sur chaque recette le taux de perte moyen calculé sur l\'historique de production.',
+    },
+  ]
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      <SectionTitle icon={<EyeOutlined />}>Affichage des données de production</SectionTitle>
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+        {items.map((item, i) => (
+          <div key={item.key} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px 20px',
+            borderBottom: i < items.length - 1 ? '1px solid #e2e8f0' : 'none',
+          }}>
+            <div>
+              <Text strong style={{ fontSize: 14 }}>{item.label}</Text>
+              <br />
+              <Text type="secondary" style={{ fontSize: 12 }}>{item.desc}</Text>
+            </div>
+            <Switch
+              checked={settings[item.key] !== false}
+              onChange={toggle(item.key, item.label)}
+              checkedChildren="Affiché"
+              unCheckedChildren="Masqué"
+              style={{ flexShrink: 0, marginLeft: 24 }}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Onglet : Sécurité ──────────────────────────────────── */
 function OngletCompte() {
   const [form] = Form.useForm()
@@ -577,6 +631,11 @@ export default function Parametres() {
       key: 'pdf',
       label: <span><BgColorsOutlined style={{ marginRight: 6 }} />Personnalisation PDF</span>,
       children: <OngletPDF settings={settings} saveSettings={saveSettings} />,
+    },
+    {
+      key: 'production',
+      label: <span><ExperimentOutlined style={{ marginRight: 6 }} />Production</span>,
+      children: <OngletProduction settings={settings} saveSettings={saveSettings} />,
     },
     {
       key: 'compte',

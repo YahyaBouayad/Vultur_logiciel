@@ -1,7 +1,7 @@
 import {
   Table, Button, Input, Space, Tag, Typography, Modal, Form,
   InputNumber, Drawer, Timeline, Popconfirm, message, Tooltip,
-  Card, Row, Col, Statistic, Segmented
+  Card, Row, Col, Statistic, Segmented, Select
 } from 'antd'
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
@@ -13,14 +13,23 @@ import { useEffect, useState, useMemo } from 'react'
 import api from '../api/axios'
 
 const { Title, Text } = Typography
+const { Option } = Select
 
 const SEUIL = 5
+const UNITES = ['unité', 'kg', 'g', 'L', 'mL']
 
-function stockTag(stock, ignoree) {
-  if (ignoree)      return <Tag color="default"   style={{ fontWeight: 500 }}>{stock} — ignoré</Tag>
-  if (stock === 0)  return <Tag color="error"     style={{ fontWeight: 600 }}>Rupture</Tag>
-  if (stock <= SEUIL) return <Tag color="warning" style={{ fontWeight: 600 }}>{stock}</Tag>
-  return               <Tag color="success"       style={{ fontWeight: 600 }}>{stock}</Tag>
+function fmtStock(stock) {
+  const n = parseFloat(stock)
+  return n % 1 === 0 ? String(n) : n.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function stockTag(stock, unite, ignoree) {
+  const n = parseFloat(stock)
+  const label = `${fmtStock(n)} ${unite}`
+  if (ignoree)    return <Tag color="default"   style={{ fontWeight: 500 }}>{label} — ignoré</Tag>
+  if (n === 0)    return <Tag color="error"     style={{ fontWeight: 600 }}>Rupture</Tag>
+  if (n <= SEUIL) return <Tag color="warning"   style={{ fontWeight: 600 }}>{label}</Tag>
+  return               <Tag color="success"     style={{ fontWeight: 600 }}>{label}</Tag>
 }
 
 export default function Produits() {
@@ -211,7 +220,7 @@ export default function Produits() {
       key: 'stock',
       width: 130,
       sorter: (a, b) => a.stock - b.stock,
-      render: (v, r) => stockTag(v, r.alerte_ignoree),
+      render: (v, r) => stockTag(v, r.unite || 'unité', r.alerte_ignoree),
     },
     {
       title: 'Actions',
@@ -363,12 +372,23 @@ export default function Produits() {
           <Form.Item name="reference" label="Référence" rules={[{ required: true, message: 'Référence requise' }]}>
             <Input placeholder="Ex : AMX-500" />
           </Form.Item>
-          <Form.Item name="prix" label="Prix de vente (MAD)" rules={[{ required: true, message: 'Prix requis' }]}>
-            <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="0.00" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="prix" label="Prix de vente (MAD)" rules={[{ required: true, message: 'Prix requis' }]}>
+                <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="0.00" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="unite" label="Unité" initialValue="unité" rules={[{ required: true }]}>
+                <Select>
+                  {UNITES.map(u => <Option key={u} value={u}>{u}</Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
           {!editingProduit && (
             <Form.Item name="stock" label="Stock initial" initialValue={0}>
-              <InputNumber min={0} style={{ width: '100%' }} />
+              <InputNumber min={0} step={0.001} style={{ width: '100%' }} />
             </Form.Item>
           )}
         </Form>
@@ -385,9 +405,9 @@ export default function Produits() {
         confirmLoading={formLoading}
       >
         <Form form={stockForm} layout="vertical" onFinish={handleEntreeStock} style={{ marginTop: 16 }}>
-          <Form.Item name="quantite" label="Quantité à ajouter"
+          <Form.Item name="quantite" label={`Quantité à ajouter (${stockProduit?.unite || 'unité'})`}
             rules={[{ required: true, message: 'Quantité requise' }]}>
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <InputNumber min={0.001} step={0.001} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="notes" label="Provenance (optionnel)">
             <Input placeholder="Ex : Achat fournisseur, Retour client, Inventaire…" />
@@ -407,9 +427,9 @@ export default function Produits() {
         confirmLoading={formLoading}
       >
         <Form form={sortieForm} layout="vertical" onFinish={handleSortieStock} style={{ marginTop: 16 }}>
-          <Form.Item name="quantite" label={`Quantité à retirer (stock actuel : ${sortieProduit?.stock ?? '—'})`}
+          <Form.Item name="quantite" label={`Quantité à retirer (${sortieProduit?.unite || 'unité'}) — stock actuel : ${fmtStock(sortieProduit?.stock ?? 0)}`}
             rules={[{ required: true, message: 'Quantité requise' }]}>
-            <InputNumber min={1} max={sortieProduit?.stock} style={{ width: '100%' }} />
+            <InputNumber min={0.001} step={0.001} max={sortieProduit?.stock} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="notes" label="Motif (optionnel)">
             <Input placeholder="Ex : Casse, Usage interne, Périmé…" />
@@ -438,7 +458,7 @@ export default function Produits() {
                 children: (
                   <div>
                     <Text strong style={{ color: isEntree ? '#10b981' : '#ef4444' }}>
-                      {isEntree ? '+' : '−'}{m.quantite} unités
+                      {isEntree ? '+' : '−'}{fmtStock(m.quantite)} {drawerProduit?.unite || 'unité'}
                     </Text>
                     <br />
                     <Text style={{ fontSize: 12, color: '#64748b' }}>{source}</Text>
