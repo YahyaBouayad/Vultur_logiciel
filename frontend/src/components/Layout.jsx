@@ -56,7 +56,8 @@ function buildMenuItems(nbRetard) {
       icon: <ShoppingCartOutlined />,
       label: 'Achats',
       children: [
-        { key: '/achats', icon: <AppstoreOutlined />, label: 'Bons de commande' },
+        { key: '/demandes-achat', icon: <FileTextOutlined />,    label: 'Demandes d\'achat' },
+        { key: '/achats',         icon: <AppstoreOutlined />,    label: 'Bons de commande' },
       ],
     },
     {
@@ -109,7 +110,7 @@ export default function AppLayout() {
 
   const openKeys = () => {
     if (['/bons-livraison', '/factures', '/avoirs'].includes(location.pathname)) return ['ventes']
-    if (['/achats'].includes(location.pathname)) return ['achats']
+    if (['/achats', '/demandes-achat'].includes(location.pathname)) return ['achats']
     if (['/produits', '/clients', '/fournisseurs'].includes(location.pathname)) return ['referentiel']
     if (location.pathname === '/comptabilite') return []
     return []

@@ -12,3 +12,4 @@ from .parametre import Parametre
 from .recette import Recette, LigneRecette
 from .ordre_fabrication import OrdreFabrication
 from .stock_mouvement import StockMouvement  # après OrdreFabrication (FK)
+from .demande_achat import DemandeAchat, LigneDemandeAchat

@@ -32,6 +32,9 @@ class ParametreOut(BaseModel):
     prod_afficher_cout: bool = True
     prod_afficher_batches: bool = True
     prod_afficher_stats: bool = True
+    prefixe_demande: str = 'DA'
+    compteur_demande: int = 1
+    duree_archivage_demandes: int = 90
 
     class Config:
         from_attributes = True
@@ -66,6 +69,9 @@ class ParametreUpdate(BaseModel):
     prod_afficher_cout: Optional[bool] = None
     prod_afficher_batches: Optional[bool] = None
     prod_afficher_stats: Optional[bool] = None
+    prefixe_demande: Optional[str] = None
+    compteur_demande: Optional[int] = None
+    duree_archivage_demandes: Optional[int] = None
 
     @field_validator('compteur_facture')
     @classmethod

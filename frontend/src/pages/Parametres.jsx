@@ -108,6 +108,116 @@ function OngletSociete({ settings, saveSettings }) {
   )
 }
 
+/* ─── Sous-composant : Numérotation DA ───────────────────── */
+function OngletNumerotationDA({ settings, saveSettings, annee2 }) {
+  const [prefixe, setPrefixe]         = useState(settings.prefixeDemande || 'DA')
+  const [compteur, setCompteur]       = useState(settings.compteurDemande || 1)
+  const [compteurInput, setCompteurInput] = useState(settings.compteurDemande || 1)
+  const [duree, setDuree]             = useState(settings.dureeArchivageDemandes || 90)
+  const [saving, setSaving]           = useState(false)
+
+  useEffect(() => {
+    setPrefixe(settings.prefixeDemande || 'DA')
+    setCompteur(settings.compteurDemande || 1)
+    setCompteurInput(settings.compteurDemande || 1)
+    setDuree(settings.dureeArchivageDemandes || 90)
+  }, [settings])
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await saveSettings({
+        prefixeDemande: prefixe,
+        compteurDemande: compteurInput,
+        dureeArchivageDemandes: duree,
+      })
+      setCompteur(compteurInput)
+      message.success('Paramètres des demandes d\'achat sauvegardés')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '20px 24px', marginBottom: 24 }}>
+      <Row gutter={24} align="middle">
+        <Col span={12}>
+          <div style={{ marginBottom: 12 }}>
+            <Text strong>Préfixe</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Format : <Text code>{prefixe}-001/{annee2}</Text>
+            </Text>
+          </div>
+          <Input
+            value={prefixe}
+            onChange={e => setPrefixe(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 6))}
+            style={{ width: 120, fontWeight: 700, textTransform: 'uppercase' }}
+            maxLength={6}
+          />
+          <div style={{ marginTop: 16 }}>
+            <Text strong>Prochain numéro</Text>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <InputNumber
+                min={1}
+                value={compteurInput}
+                onChange={v => setCompteurInput(v ?? 1)}
+                style={{ width: 120 }}
+                size="large"
+              />
+              <Button
+                type="primary"
+                loading={saving}
+                onClick={save}
+                icon={<SaveOutlined />}
+                style={{ background: '#1e293b', borderColor: '#1e293b' }}
+              >
+                Appliquer
+              </Button>
+            </div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <Text strong>Durée de visibilité des demandes non validées</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Les demandes brouillon / envoyées / annulées sont masquées après ce délai.
+            </Text>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+              <InputNumber
+                min={1} max={3650}
+                value={duree}
+                onChange={v => setDuree(v ?? 90)}
+                style={{ width: 120 }}
+                addonAfter="jours"
+              />
+            </div>
+          </div>
+        </Col>
+        <Col span={12} style={{ textAlign: 'center' }}>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+            Aperçu — prochaine demande
+          </Text>
+          <div style={{
+            display: 'inline-block',
+            background: '#1e293b', color: '#fff',
+            padding: '10px 24px', borderRadius: 8,
+            fontSize: 22, fontWeight: 700, letterSpacing: 1,
+          }}>
+            {prefixe}-{String(compteurInput).padStart(3, '0')}/{annee2}
+          </div>
+          {compteurInput !== compteur && (
+            <div style={{ marginTop: 8 }}>
+              <Text type="warning" style={{ fontSize: 12 }}>
+                Modification non sauvegardée (actuel : {compteur})
+              </Text>
+            </div>
+          )}
+        </Col>
+      </Row>
+    </div>
+  )
+}
+
 /* ─── Onglet : Facturation ────────────────────────────────── */
 function OngletFacturation({ settings, saveSettings }) {
   const [form] = Form.useForm()
@@ -234,6 +344,12 @@ function OngletFacturation({ settings, saveSettings }) {
           </Col>
         </Row>
       </div>
+
+      <Divider />
+
+      {/* Numérotation demandes d'achat */}
+      <SectionTitle icon={<FileTextOutlined />}>Numérotation des demandes d'achat</SectionTitle>
+      <OngletNumerotationDA settings={settings} saveSettings={saveSettings} annee2={annee2} />
 
       <Divider />
       <SectionTitle icon={<FileTextOutlined />}>Devise &amp; conditions de paiement</SectionTitle>

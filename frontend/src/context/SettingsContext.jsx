@@ -30,6 +30,10 @@ export const DEFAULT_SETTINGS = {
   prodAfficherCout: true,
   prodAfficherBatches: true,
   prodAfficherStats: true,
+  // Demandes d'achat
+  prefixeDemande: 'DA',
+  compteurDemande: 1,
+  dureeArchivageDemandes: 90,
 }
 
 // snake_case API → camelCase frontend
@@ -56,6 +60,9 @@ function fromApi(data) {
     prodAfficherCout:    data.prod_afficher_cout    ?? true,
     prodAfficherBatches: data.prod_afficher_batches ?? true,
     prodAfficherStats:   data.prod_afficher_stats   ?? true,
+    prefixeDemande:          data.prefixe_demande           ?? 'DA',
+    compteurDemande:         data.compteur_demande          ?? 1,
+    dureeArchivageDemandes:  data.duree_archivage_demandes  ?? 90,
   }
 }
 
@@ -72,6 +79,9 @@ const CAMEL_TO_SNAKE = {
   prodAfficherCout:    'prod_afficher_cout',
   prodAfficherBatches: 'prod_afficher_batches',
   prodAfficherStats:   'prod_afficher_stats',
+  prefixeDemande:          'prefixe_demande',
+  compteurDemande:         'compteur_demande',
+  dureeArchivageDemandes:  'duree_archivage_demandes',
 }
 
 function toApi(updates) {

@@ -36,3 +36,8 @@ class Parametre(Base):
     prod_afficher_cout    = Column(Boolean, nullable=False, default=True, server_default='true')
     prod_afficher_batches = Column(Boolean, nullable=False, default=True, server_default='true')
     prod_afficher_stats   = Column(Boolean, nullable=False, default=True, server_default='true')
+
+    # Demandes d'achat
+    prefixe_demande          = Column(String,  nullable=False, default='DA',  server_default="'DA'")
+    compteur_demande         = Column(Integer, nullable=False, default=1,     server_default='1')
+    duree_archivage_demandes = Column(Integer, nullable=False, default=90,    server_default='90')

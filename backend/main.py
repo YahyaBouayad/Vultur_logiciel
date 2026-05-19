@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from database import engine, Base
 import models  # noqa: enregistre tous les modèles sur Base
-from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth, parametres, recettes, production
+from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth, parametres, recettes, production, demandes_achat
 
 Base.metadata.create_all(bind=engine)
 
@@ -90,6 +90,32 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prod_afficher_cout BOOLEAN NOT NULL DEFAULT TRUE"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prod_afficher_batches BOOLEAN NOT NULL DEFAULT TRUE"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prod_afficher_stats BOOLEAN NOT NULL DEFAULT TRUE"))
+    # Demandes d'achat — paramètres
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prefixe_demande VARCHAR NOT NULL DEFAULT 'DA'"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS compteur_demande INTEGER NOT NULL DEFAULT 1"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS duree_archivage_demandes INTEGER NOT NULL DEFAULT 90"))
+    # Demandes d'achat — tables
+    _conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS demandes_achat (
+            id SERIAL PRIMARY KEY,
+            numero VARCHAR NOT NULL UNIQUE,
+            fournisseur_id INTEGER NOT NULL REFERENCES fournisseurs(id),
+            statut VARCHAR NOT NULL DEFAULT 'brouillon',
+            date DATE NOT NULL,
+            notes TEXT,
+            bon_commande_id INTEGER REFERENCES bons_commande(id)
+        )
+    """))
+    _conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS lignes_demande_achat (
+            id SERIAL PRIMARY KEY,
+            demande_id INTEGER NOT NULL REFERENCES demandes_achat(id) ON DELETE CASCADE,
+            produit_id INTEGER NOT NULL REFERENCES produits(id),
+            quantite_demandee NUMERIC(12,3) NOT NULL,
+            quantite_confirmee NUMERIC(12,3),
+            prix_unitaire NUMERIC(10,2) NOT NULL
+        )
+    """))
     _conn.commit()
 
 app = FastAPI(title="Vultur - Gestion d'entreprise", redirect_slashes=False)
@@ -116,6 +142,7 @@ app.include_router(paiements.router)
 app.include_router(parametres.router)
 app.include_router(recettes.router)
 app.include_router(production.router)
+app.include_router(demandes_achat.router)
 
 
 @app.get("/")

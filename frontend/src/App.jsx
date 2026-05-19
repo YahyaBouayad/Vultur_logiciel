@@ -19,6 +19,7 @@ import Comptabilite from './pages/Comptabilite'
 import Avoirs from './pages/Avoirs'
 import SuiviPaiements from './pages/SuiviPaiements'
 import Production from './pages/Production'
+import DemandesAchat from './pages/DemandesAchat'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -37,6 +38,7 @@ function AppRoutes() {
         <Route path="clients" element={<Clients />} />
         <Route path="fournisseurs" element={<Fournisseurs />} />
         <Route path="achats" element={<Achats />} />
+        <Route path="demandes-achat" element={<DemandesAchat />} />
         <Route path="bons-livraison" element={<BonsLivraison />} />
         <Route path="factures" element={<Factures />} />
         <Route path="comptabilite" element={<Comptabilite />} />
