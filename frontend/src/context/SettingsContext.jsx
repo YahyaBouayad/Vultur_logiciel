@@ -13,6 +13,12 @@ export const DEFAULT_SETTINGS = {
   email: '',
   ice: '',
   rc: '',
+  // Comptes bancaires
+  rib1: '', rib1Label: '',
+  rib2: '', rib2Label: '',
+  rib3: '', rib3Label: '',
+  ribActif: 1,
+  rib: '',  // calculé = RIB du compte actif, utilisé par les PDFs
   // Facturation
   tva: 20,
   delaiPaiement: 30,
@@ -46,6 +52,19 @@ function fromApi(data) {
     email:              data.email              ?? '',
     ice:                data.ice                ?? '',
     rc:                 data.rc                 ?? '',
+    rib1:              data.rib_1              ?? '',
+    rib1Label:         data.rib_1_label        ?? '',
+    rib2:              data.rib_2              ?? '',
+    rib2Label:         data.rib_2_label        ?? '',
+    rib3:              data.rib_3              ?? '',
+    rib3Label:         data.rib_3_label        ?? '',
+    ribActif:          data.rib_actif          ?? 1,
+    rib: (() => {
+      const actif = data.rib_actif ?? 1
+      if (actif === 2) return data.rib_2 || ''
+      if (actif === 3) return data.rib_3 || ''
+      return data.rib_1 || ''
+    })(),
     tva:                data.tva                ?? 20,
     delaiPaiement:      data.delai_paiement     ?? 30,
     devise:             data.devise             ?? 'MAD',
@@ -82,6 +101,13 @@ const CAMEL_TO_SNAKE = {
   prefixeDemande:          'prefixe_demande',
   compteurDemande:         'compteur_demande',
   dureeArchivageDemandes:  'duree_archivage_demandes',
+  rib1:       'rib_1',
+  rib1Label:  'rib_1_label',
+  rib2:       'rib_2',
+  rib2Label:  'rib_2_label',
+  rib3:       'rib_3',
+  rib3Label:  'rib_3_label',
+  ribActif:   'rib_actif',
 }
 
 function toApi(updates) {

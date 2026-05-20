@@ -47,6 +47,16 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS afficher_remise BOOLEAN NOT NULL DEFAULT TRUE"))
     _conn.execute(text("ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS notes VARCHAR"))
     _conn.execute(text("ALTER TABLE fournisseurs ADD COLUMN IF NOT EXISTS rib VARCHAR"))
+    # Comptes bancaires — remplacement de rib unique par rib_1/2/3
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS rib_1 VARCHAR"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS rib_1_label VARCHAR"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS rib_2 VARCHAR"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS rib_2_label VARCHAR"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS rib_3 VARCHAR"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS rib_3_label VARCHAR"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS rib_actif INTEGER NOT NULL DEFAULT 1"))
+    # Migrer l'ancien champ rib vers rib_1 si rib_1 est vide
+    _conn.execute(text("UPDATE parametres SET rib_1 = rib WHERE rib IS NOT NULL AND rib_1 IS NULL"))
     # Production module — nouvelles colonnes et tables
     _conn.execute(text("ALTER TABLE produits ADD COLUMN IF NOT EXISTS unite VARCHAR NOT NULL DEFAULT 'unité'"))
     _conn.execute(text("ALTER TABLE produits ALTER COLUMN stock TYPE NUMERIC(12,3) USING stock::numeric"))

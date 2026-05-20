@@ -16,6 +16,14 @@ class Parametre(Base):
     email     = Column(String, nullable=True)
     ice       = Column(String, nullable=True)
     rc        = Column(String, nullable=True)
+    # Comptes bancaires (rib ancien ignoré, remplacé par rib_1/2/3)
+    rib_1       = Column(String, nullable=True)
+    rib_1_label = Column(String, nullable=True)
+    rib_2       = Column(String, nullable=True)
+    rib_2_label = Column(String, nullable=True)
+    rib_3       = Column(String, nullable=True)
+    rib_3_label = Column(String, nullable=True)
+    rib_actif   = Column(Integer, nullable=False, default=1, server_default='1')
 
     # Facturation
     tva             = Column(Numeric(5, 2), nullable=False, default=20,    server_default='20')

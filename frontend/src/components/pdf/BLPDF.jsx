@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
+import { montantEnLettres } from '../../utils/montantEnLettres'
 
 const s = StyleSheet.create({
   page: { fontFamily: 'Helvetica', fontSize: 9, color: '#1a2332', backgroundColor: '#ffffff' },
@@ -63,6 +64,14 @@ const s = StyleSheet.create({
   sigRow: { flexDirection: 'row', padding: '16 28 0', gap: 14 },
   sigBox: { flex: 1, borderWidth: 0.5, borderColor: '#cbd5e1', borderRadius: 4, padding: '10 12', height: 60 },
   sigLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  wordsRow: { padding: '10 28 0' },
+  wordsLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#475569', marginBottom: 2 },
+  wordsText: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#1a2332' },
+
+  ribBox: { margin: '10 28 0', borderWidth: 0.5, borderColor: '#94a3b8', borderRadius: 4, padding: '7 14', flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ribLabel: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8 },
+  ribValue: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#1a2332', letterSpacing: 0.5 },
 
   mentionsText: { padding: '8 28 0', fontSize: 7, color: '#94a3b8', lineHeight: 1.5 },
 
@@ -192,11 +201,17 @@ export default function BLPDF({ bl, client, produits, entreprise = {} }) {
           </View>
         </View>
 
-        {/* ── NOTES BL ─────────────────────────────────── */}
-        {bl.notes && (
-          <View style={s.notesBox}>
-            <Text style={s.notesLabel}>Notes</Text>
-            <Text style={s.notesText}>{bl.notes}</Text>
+        {/* ── MONTANT EN LETTRES ───────────────────────── */}
+        <View style={s.wordsRow}>
+          <Text style={s.wordsLabel}>Arrêté le présent bon de livraison à la somme de :</Text>
+          <Text style={s.wordsText}>{montantEnLettres(total)}</Text>
+        </View>
+
+        {/* ── COORDONNÉES BANCAIRES ────────────────────── */}
+        {E.rib && (
+          <View style={s.ribBox}>
+            <Text style={s.ribLabel}>Coordonnées bancaires ·  RIB</Text>
+            <Text style={s.ribValue}>{E.rib}</Text>
           </View>
         )}
 

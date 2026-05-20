@@ -15,6 +15,15 @@ class ParametreOut(BaseModel):
     ice: Optional[str] = None
     rc: Optional[str] = None
 
+    # Comptes bancaires
+    rib_1: Optional[str] = None
+    rib_1_label: Optional[str] = None
+    rib_2: Optional[str] = None
+    rib_2_label: Optional[str] = None
+    rib_3: Optional[str] = None
+    rib_3_label: Optional[str] = None
+    rib_actif: int = 1
+
     # Facturation
     tva: float = 20.0
     delai_paiement: int = 30
@@ -51,6 +60,15 @@ class ParametreUpdate(BaseModel):
     email: Optional[str] = None
     ice: Optional[str] = None
     rc: Optional[str] = None
+
+    # Comptes bancaires
+    rib_1: Optional[str] = None
+    rib_1_label: Optional[str] = None
+    rib_2: Optional[str] = None
+    rib_2_label: Optional[str] = None
+    rib_3: Optional[str] = None
+    rib_3_label: Optional[str] = None
+    rib_actif: Optional[int] = None
 
     # Facturation
     tva: Optional[float] = None

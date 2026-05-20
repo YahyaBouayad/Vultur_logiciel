@@ -104,7 +104,130 @@ function OngletSociete({ settings, saveSettings }) {
         style={{ background: '#1e293b', borderColor: '#1e293b', marginTop: 8 }}>
         Enregistrer
       </Button>
+
+      <Divider />
+      <SectionTitle icon={<BankOutlined />}>Comptes bancaires</SectionTitle>
+      <ComptеsBancaires settings={settings} saveSettings={saveSettings} />
     </Form>
+  )
+}
+
+/* ─── Sous-composant : Comptes bancaires ─────────────────── */
+function ComptеsBancaires({ settings, saveSettings }) {
+  const slots = [
+    { key: 1, ribKey: 'rib1', labelKey: 'rib1Label' },
+    { key: 2, ribKey: 'rib2', labelKey: 'rib2Label' },
+    { key: 3, ribKey: 'rib3', labelKey: 'rib3Label' },
+  ]
+
+  const [values, setValues] = useState({
+    rib1:      settings.rib1      || '',
+    rib1Label: settings.rib1Label || '',
+    rib2:      settings.rib2      || '',
+    rib2Label: settings.rib2Label || '',
+    rib3:      settings.rib3      || '',
+    rib3Label: settings.rib3Label || '',
+    ribActif:  settings.ribActif  || 1,
+  })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setValues({
+      rib1:      settings.rib1      || '',
+      rib1Label: settings.rib1Label || '',
+      rib2:      settings.rib2      || '',
+      rib2Label: settings.rib2Label || '',
+      rib3:      settings.rib3      || '',
+      rib3Label: settings.rib3Label || '',
+      ribActif:  settings.ribActif  || 1,
+    })
+  }, [settings])
+
+  const set = (field, val) => setValues(prev => ({ ...prev, [field]: val }))
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await saveSettings(values)
+      message.success('Comptes bancaires enregistrés')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 700 }}>
+      <Text type="secondary" style={{ display: 'block', marginBottom: 16, fontSize: 12 }}>
+        Le compte marqué <Text strong>Actif</Text> apparaît dans les PDFs (factures, bons de livraison).
+      </Text>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {slots.map(({ key, ribKey, labelKey }) => {
+          const isActif = values.ribActif === key
+          return (
+            <div
+              key={key}
+              onClick={() => set('ribActif', key)}
+              style={{
+                border: `2px solid ${isActif ? '#1e293b' : '#e2e8f0'}`,
+                borderRadius: 10,
+                padding: '14px 18px',
+                cursor: 'pointer',
+                background: isActif ? '#f8fafc' : '#fff',
+                transition: 'all 0.18s',
+                position: 'relative',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{
+                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                  border: `2px solid ${isActif ? '#1e293b' : '#94a3b8'}`,
+                  background: isActif ? '#1e293b' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {isActif && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                </div>
+                <Text strong style={{ fontSize: 13 }}>Compte {key}</Text>
+                {isActif && (
+                  <span style={{
+                    background: '#1e293b', color: '#fff', borderRadius: 6,
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', letterSpacing: 0.5,
+                  }}>
+                    ACTIF — affiché dans les PDFs
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 12 }} onClick={e => e.stopPropagation()}>
+                <div style={{ flex: '0 0 180px' }}>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>Intitulé (ex. Banque Populaire)</Text>
+                  <Input
+                    value={values[labelKey]}
+                    onChange={e => set(labelKey, e.target.value)}
+                    placeholder="Nom de la banque"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>RIB</Text>
+                  <Input
+                    value={values[ribKey]}
+                    onChange={e => set(ribKey, e.target.value)}
+                    placeholder="XXX XXXXXXXXXX XXXXXXXXXX XX"
+                    style={{ fontFamily: 'monospace', width: '100%' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <Button
+        type="primary" icon={<SaveOutlined />} loading={saving}
+        onClick={handleSave}
+        style={{ background: '#1e293b', borderColor: '#1e293b', marginTop: 16 }}
+      >
+        Enregistrer les comptes bancaires
+      </Button>
+    </div>
   )
 }
 

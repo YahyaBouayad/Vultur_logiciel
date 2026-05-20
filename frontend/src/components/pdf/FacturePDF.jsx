@@ -75,6 +75,11 @@ const s = StyleSheet.create({
   wordsLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#475569', marginBottom: 2 },
   wordsText: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#1a2332' },
 
+  // ─── RIB ─────────────────────────────────────────────────
+  ribBox: { margin: '10 28 0', borderWidth: 0.5, borderColor: '#94a3b8', borderRadius: 4, padding: '7 14', flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ribLabel: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8 },
+  ribValue: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#1a2332', letterSpacing: 0.5 },
+
   // ─── MENTIONS + FOOTER ───────────────────────────────────
   mentionsText: { padding: '8 28 0', fontSize: 7, color: '#94a3b8', lineHeight: 1.5 },
   footer: {
@@ -216,7 +221,7 @@ export function FacturePage({ facture, client, bl, produits, entreprise = {} }) 
             </View>
           </View>
 
-          {/* Conditions (texte label centré à gauche) */}
+          {/* Conditions de règlement */}
           <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: 2 }}>
             {E.conditionsPaiement
               ? <Text style={[s.condLabel, { fontSize: 8, color: '#475569' }]}>
@@ -243,6 +248,14 @@ export function FacturePage({ facture, client, bl, produits, entreprise = {} }) 
             </View>
           </View>
         </View>
+
+        {/* ── COORDONNÉES BANCAIRES ────────────────────── */}
+        {E.rib && (
+          <View style={s.ribBox}>
+            <Text style={s.ribLabel}>Coordonnées bancaires ·  RIB</Text>
+            <Text style={s.ribValue}>{E.rib}</Text>
+          </View>
+        )}
 
         {/* ── MONTANT EN LETTRES ───────────────────────── */}
         <View style={s.wordsRow}>
