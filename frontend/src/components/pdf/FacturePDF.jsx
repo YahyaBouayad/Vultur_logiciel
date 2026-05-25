@@ -196,7 +196,9 @@ export function FacturePage({ facture, client, bl, produits, entreprise = {} }) 
                 <Text style={[s.tdNum, s.colQty]}>{l.quantite}</Text>
                 <Text style={[s.tdNum, s.colPU]}>{fmt(puHT)}</Text>
                 {showRemise && (
-                  <Text style={[s.tdNum, s.colRemise]}>{remisePct > 0 ? `${remisePct}%` : '—'}</Text>
+                  <Text style={[s.tdNum, s.colRemise]}>
+                    {remisePct !== 0 ? (remisePct > 0 ? `−${remisePct}%` : `+${Math.abs(remisePct)}%`) : '—'}
+                  </Text>
                 )}
                 <Text style={[s.tdNum, s.colTVA]}>{tauxTVA}%</Text>
                 <Text style={[s.tdNumBold, s.colTot]}>{fmt(lineTTC)}</Text>

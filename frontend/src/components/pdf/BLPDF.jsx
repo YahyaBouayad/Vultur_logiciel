@@ -179,7 +179,9 @@ export default function BLPDF({ bl, client, produits, entreprise = {} }) {
                 <Text style={[s.tdNum, s.colQty]}>{l.quantite}</Text>
                 <Text style={[s.tdNum, showRemise ? s.colPU : s.colPUWide]}>{fmt(l.prix_unitaire)} {devise}</Text>
                 {showRemise && (
-                  <Text style={[s.tdNum, s.colRemise]}>{remisePct > 0 ? `${remisePct}%` : '—'}</Text>
+                  <Text style={[s.tdNum, s.colRemise]}>
+                    {remisePct !== 0 ? (remisePct > 0 ? `−${remisePct}%` : `+${Math.abs(remisePct)}%`) : '—'}
+                  </Text>
                 )}
                 <Text style={[s.tdNumBold, showRemise ? s.colTot : s.colTotWide]}>{fmt(sousTotal)} {devise}</Text>
               </View>

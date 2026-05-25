@@ -592,11 +592,11 @@ export default function BonsLivraison() {
                   addonAfter="MAD"
                 />
                 <InputNumber
-                  min={0}
+                  min={-100}
                   max={100}
                   precision={1}
-                  value={ligne.remise || 0}
-                  onChange={(v) => updateLigne(idx, 'remise', v || 0)}
+                  value={ligne.remise ?? 0}
+                  onChange={(v) => updateLigne(idx, 'remise', v ?? 0)}
                   style={{ width: '100%' }}
                   addonAfter="%"
                 />
@@ -690,7 +690,7 @@ export default function BonsLivraison() {
           const client     = clients.find(c => c.id === selected.client_id)
           const total      = totalBL(selected)
           const qtyTotale  = selected.lignes.reduce((s, l) => s + l.quantite, 0)
-          const hasRemise  = selected.lignes.some(l => Number(l.remise || 0) > 0)
+          const hasRemise  = selected.lignes.some(l => Number(l.remise || 0) !== 0)
           return (
             <>
               {/* ── Header gradient ── */}
@@ -844,8 +844,10 @@ export default function BonsLivraison() {
                             {Number(l.prix_unitaire).toFixed(2)} MAD
                           </Text>
                           <div style={{ textAlign: 'right' }}>
-                            {remise > 0
-                              ? <Tag color="orange" style={{ margin: 0, fontSize: 11 }}>{remise}%</Tag>
+                            {remise !== 0
+                              ? <Tag color={remise > 0 ? 'orange' : 'blue'} style={{ margin: 0, fontSize: 11 }}>
+                                  {remise > 0 ? `−${remise}%` : `+${Math.abs(remise)}%`}
+                                </Tag>
                               : <Text type="secondary" style={{ fontSize: 12 }}>—</Text>
                             }
                           </div>

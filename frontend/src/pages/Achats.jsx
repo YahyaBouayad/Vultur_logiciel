@@ -488,8 +488,8 @@ export default function Achats() {
                 style={{ width: '100%' }} addonAfter="MAD"
               />
               <InputNumber
-                min={0} max={100} precision={1} value={ligne.remise || 0}
-                onChange={(v) => updateLigne(idx, 'remise', v || 0)}
+                min={-100} max={100} precision={1} value={ligne.remise ?? 0}
+                onChange={(v) => updateLigne(idx, 'remise', v ?? 0)}
                 style={{ width: '100%' }} addonAfter="%"
               />
               <div style={{ textAlign: 'right', fontWeight: 600, fontSize: 13, color: '#0f172a', whiteSpace: 'nowrap' }}>
