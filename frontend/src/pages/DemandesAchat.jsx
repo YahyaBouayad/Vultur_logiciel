@@ -9,6 +9,7 @@ import {
   FilePdfOutlined, MinusCircleOutlined, EyeOutlined,
 } from '@ant-design/icons'
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { pdf } from '@react-pdf/renderer'
 import api from '../api/axios'
@@ -46,6 +47,8 @@ const fmtQte = (n, unite = '') => {
 
 export default function DemandesAchat() {
   const { settings } = useSettings()
+  const navigate = useNavigate()
+  const devise = settings.devise || 'MAD'
 
   const [demandes, setDemandes]   = useState([])
   const [filtered, setFiltered]   = useState([])
@@ -62,6 +65,7 @@ export default function DemandesAchat() {
   const [editingId, setEditingId]     = useState(null)
   const [formLoading, setFormLoading] = useState(false)
   const [lignes, setLignes]           = useState([{ produit_id: null, quantite_demandee: 1, prix_unitaire: 0 }])
+  const [tvaActive, setTvaActive]     = useState(false)
   const [form] = Form.useForm()
 
   // Drawer détail
@@ -69,11 +73,12 @@ export default function DemandesAchat() {
   const [selected, setSelected] = useState(null)
 
   // Modal validation
-  const [validerOpen, setValiderOpen]   = useState(false)
-  const [validerDA, setValiderDA]       = useState(null)
-  const [validerLignes, setValiderLignes] = useState([])
+  const [validerOpen, setValiderOpen]         = useState(false)
+  const [validerDA, setValiderDA]             = useState(null)
+  const [validerLignes, setValiderLignes]     = useState([])
+  const [tvaValiderActive, setTvaValiderActive] = useState(false)
   const [validerForm] = Form.useForm()
-  const [validerLoading, setValiderLoading] = useState(false)
+  const [validerLoading, setValiderLoading]   = useState(false)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -118,6 +123,7 @@ export default function DemandesAchat() {
     setModalMode('create')
     setEditingId(null)
     setLignes([{ produit_id: null, quantite_demandee: 1, prix_unitaire: 0 }])
+    setTvaActive(false)
     form.resetFields()
     form.setFieldsValue({ date: dayjs() })
     setModalOpen(true)
@@ -132,6 +138,7 @@ export default function DemandesAchat() {
       prix_unitaire: l.prix_unitaire,
     }))
     setLignes(ls)
+    setTvaActive(false)
     form.setFieldsValue({
       fournisseur_id: da.fournisseur_id,
       date: da.date ? dayjs(da.date) : dayjs(),
@@ -154,7 +161,9 @@ export default function DemandesAchat() {
         lignes: lignes.map(l => ({
           produit_id: l.produit_id,
           quantite_demandee: l.quantite_demandee,
-          prix_unitaire: l.prix_unitaire,
+          prix_unitaire: tvaActive
+            ? Math.round((l.prix_unitaire || 0) * 1.2 * 100) / 100
+            : l.prix_unitaire,
         })),
       }
       if (modalMode === 'create') {
@@ -218,6 +227,7 @@ export default function DemandesAchat() {
       prix_unitaire: l.prix_unitaire,
     }))
     setValiderLignes(ls)
+    setTvaValiderActive(false)
     validerForm.setFieldsValue({
       date_bc: dayjs(),
       notes_bc: '',
@@ -232,7 +242,9 @@ export default function DemandesAchat() {
         lignes: validerLignes.map(l => ({
           produit_id: l.produit_id,
           quantite_confirmee: l.quantite_confirmee,
-          prix_unitaire: l.prix_unitaire,
+          prix_unitaire: tvaValiderActive
+            ? Math.round((l.prix_unitaire || 0) * 1.2 * 100) / 100
+            : l.prix_unitaire,
         })),
         date_bc: values.date_bc?.format('YYYY-MM-DD'),
         notes_bc: values.notes_bc || null,
@@ -522,11 +534,47 @@ export default function DemandesAchat() {
         >
           Ajouter un article
         </Button>
-        <div style={{ textAlign: 'right', marginTop: 12 }}>
-          <Text strong>Total estimé : </Text>
-          <Text strong style={{ color: '#1e293b', fontSize: 16 }}>
-            {fmt(totalLignes, settings.devise || 'MAD')}
-          </Text>
+        <div style={{ marginTop: 12 }}>
+          {tvaActive && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+              gap: 1, marginBottom: 1, borderRadius: '8px 8px 0 0', overflow: 'hidden',
+              border: '1px solid #e2e8f0', borderBottom: 'none',
+            }}>
+              <div style={{ background: '#f8fafc', padding: '10px 14px', textAlign: 'center' }}>
+                <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total HT</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginTop: 3 }}>{fmt(totalLignes, devise)}</div>
+              </div>
+              <div style={{ background: '#fffbeb', padding: '10px 14px', textAlign: 'center', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0' }}>
+                <div style={{ color: '#b45309', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TVA 20%</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginTop: 3 }}>{fmt(totalLignes * 0.2, devise)}</div>
+              </div>
+              <div style={{ background: '#f0fdf4', padding: '10px 14px', textAlign: 'center' }}>
+                <div style={{ color: '#166534', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total TTC</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#15803d', marginTop: 3 }}>{fmt(totalLignes * 1.2, devise)}</div>
+              </div>
+            </div>
+          )}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '10px 14px', background: '#f8fafc',
+            borderRadius: tvaActive ? '0 0 8px 8px' : 8,
+            border: tvaActive ? '1px solid #e2e8f0' : 'none',
+          }}>
+            <Tooltip title={tvaActive ? "Désactiver l'affichage TVA" : 'Afficher le détail HT / TVA 20% / TTC'}>
+              <Button
+                size="small"
+                type={tvaActive ? 'primary' : 'default'}
+                style={tvaActive ? { background: '#b45309', borderColor: '#b45309' } : {}}
+                onClick={() => setTvaActive(v => !v)}
+              >
+                TVA 20%
+              </Button>
+            </Tooltip>
+            <Text strong style={{ fontSize: 15 }}>
+              {tvaActive ? 'Total HT' : 'Total estimé'} : {fmt(totalLignes, devise)}
+            </Text>
+          </div>
         </div>
       </Modal>
 
@@ -581,11 +629,47 @@ export default function DemandesAchat() {
             />
           </div>
         ))}
-        <div style={{ textAlign: 'right', marginTop: 12 }}>
-          <Text strong>Total BC estimé : </Text>
-          <Text strong style={{ color: '#16a34a', fontSize: 16 }}>
-            {fmt(totalValider, settings.devise || 'MAD')}
-          </Text>
+        <div style={{ marginTop: 12 }}>
+          {tvaValiderActive && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+              gap: 1, marginBottom: 1, borderRadius: '8px 8px 0 0', overflow: 'hidden',
+              border: '1px solid #e2e8f0', borderBottom: 'none',
+            }}>
+              <div style={{ background: '#f8fafc', padding: '10px 14px', textAlign: 'center' }}>
+                <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total HT</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginTop: 3 }}>{fmt(totalValider, devise)}</div>
+              </div>
+              <div style={{ background: '#fffbeb', padding: '10px 14px', textAlign: 'center', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0' }}>
+                <div style={{ color: '#b45309', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TVA 20%</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginTop: 3 }}>{fmt(totalValider * 0.2, devise)}</div>
+              </div>
+              <div style={{ background: '#f0fdf4', padding: '10px 14px', textAlign: 'center' }}>
+                <div style={{ color: '#166534', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total TTC</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#15803d', marginTop: 3 }}>{fmt(totalValider * 1.2, devise)}</div>
+              </div>
+            </div>
+          )}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '10px 14px', background: '#f8fafc',
+            borderRadius: tvaValiderActive ? '0 0 8px 8px' : 8,
+            border: tvaValiderActive ? '1px solid #e2e8f0' : 'none',
+          }}>
+            <Tooltip title={tvaValiderActive ? "Désactiver l'affichage TVA" : 'Afficher le détail HT / TVA 20% / TTC'}>
+              <Button
+                size="small"
+                type={tvaValiderActive ? 'primary' : 'default'}
+                style={tvaValiderActive ? { background: '#b45309', borderColor: '#b45309' } : {}}
+                onClick={() => setTvaValiderActive(v => !v)}
+              >
+                TVA 20%
+              </Button>
+            </Tooltip>
+            <Text strong style={{ fontSize: 15 }}>
+              {tvaValiderActive ? 'Total HT' : 'Total BC estimé'} : {fmt(totalValider, devise)}
+            </Text>
+          </div>
         </div>
       </Modal>
 
@@ -601,9 +685,14 @@ export default function DemandesAchat() {
             <div style={{ marginBottom: 16 }}>
               <Tag color={STATUT_COLOR[selected.statut]}>{STATUT_LABEL[selected.statut]}</Tag>
               {selected.bon_commande_id && (
-                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                  BC #{selected.bon_commande_id}
-                </Text>
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ paddingLeft: 8, fontSize: 12, color: '#3b82f6' }}
+                  onClick={() => { setDrawer(false); navigate('/achats') }}
+                >
+                  → Voir BC #{String(selected.bon_commande_id).padStart(4, '0')}
+                </Button>
               )}
             </div>
             <div style={{ marginBottom: 16 }}>

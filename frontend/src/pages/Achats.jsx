@@ -44,6 +44,7 @@ export default function Achats() {
   const [formLoading, setFormLoading] = useState(false)
   const [lignes, setLignes]           = useState([{ produit_id: null, quantite: 1, prix_unitaire: 0, remise: 0 }])
   const [pdfBase64, setPdfBase64]     = useState(null)
+  const [tvaActive, setTvaActive]     = useState(false)
 
   const [drawer, setDrawer]     = useState(false)
   const [selected, setSelected] = useState(null)
@@ -86,6 +87,7 @@ export default function Achats() {
     form.setFieldsValue({ date: dayjs() })
     setLignes([{ produit_id: null, quantite: 1, prix_unitaire: 0, remise: 0 }])
     setPdfBase64(null)
+    setTvaActive(false)
     setModalMode('create')
     setEditingId(null)
     setModalOpen(true)
@@ -104,6 +106,7 @@ export default function Achats() {
       remise:        Number(l.remise || 0),
     })))
     setPdfBase64(record.pdf_base64 || null)
+    setTvaActive(false)
     setModalMode('edit')
     setEditingId(record.id)
     setModalOpen(true)
@@ -123,7 +126,9 @@ export default function Achats() {
         lignes: lignes.map(l => ({
           produit_id:    Number(l.produit_id),
           quantite:      Math.max(1, Math.round(Number(l.quantite ?? 1))),
-          prix_unitaire: Number((l.prix_unitaire ?? 0)),
+          prix_unitaire: tvaActive
+            ? Math.round((l.prix_unitaire ?? 0) * 1.2 * 100) / 100
+            : Number(l.prix_unitaire ?? 0),
           remise:        Number((l.remise ?? 0)),
         })),
         pdf_base64: pdfBase64 || null,
@@ -504,10 +509,53 @@ export default function Achats() {
             Ajouter une ligne
           </Button>
 
-          <div style={{ textAlign: 'right', marginTop: 14, padding: '10px 14px', background: '#f8fafc', borderRadius: 8 }}>
-            <Text strong style={{ fontSize: 15 }}>
-              Total : {totalFormulaire.toFixed(2)} MAD
-            </Text>
+          <div style={{ marginTop: 14 }}>
+            {tvaActive && (
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                gap: 1, marginBottom: 1, borderRadius: '8px 8px 0 0', overflow: 'hidden',
+                border: '1px solid #e2e8f0', borderBottom: 'none',
+              }}>
+                <div style={{ background: '#f8fafc', padding: '10px 14px', textAlign: 'center' }}>
+                  <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total HT</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', marginTop: 3 }}>
+                    {totalFormulaire.toFixed(2)} <span style={{ fontSize: 11, color: '#94a3b8' }}>MAD</span>
+                  </div>
+                </div>
+                <div style={{ background: '#fffbeb', padding: '10px 14px', textAlign: 'center', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0' }}>
+                  <div style={{ color: '#b45309', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TVA 20%</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#92400e', marginTop: 3 }}>
+                    {(totalFormulaire * 0.2).toFixed(2)} <span style={{ fontSize: 11, color: '#b45309' }}>MAD</span>
+                  </div>
+                </div>
+                <div style={{ background: '#f0fdf4', padding: '10px 14px', textAlign: 'center' }}>
+                  <div style={{ color: '#166534', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total TTC</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#15803d', marginTop: 3 }}>
+                    {(totalFormulaire * 1.2).toFixed(2)} <span style={{ fontSize: 11, color: '#166534' }}>MAD</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '10px 14px', background: '#f8fafc',
+              borderRadius: tvaActive ? '0 0 8px 8px' : 8,
+              border: tvaActive ? '1px solid #e2e8f0' : 'none',
+            }}>
+              <Tooltip title={tvaActive ? 'Désactiver l\'affichage TVA' : 'Afficher le détail HT / TVA 20% / TTC'}>
+                <Button
+                  size="small"
+                  type={tvaActive ? 'primary' : 'default'}
+                  style={tvaActive ? { background: '#b45309', borderColor: '#b45309' } : {}}
+                  onClick={() => setTvaActive(v => !v)}
+                >
+                  TVA 20%
+                </Button>
+              </Tooltip>
+              <Text strong style={{ fontSize: 15 }}>
+                Total {tvaActive ? 'HT' : ''} : {totalFormulaire.toFixed(2)} MAD
+              </Text>
+            </div>
           </div>
         </Form>
       </Modal>
