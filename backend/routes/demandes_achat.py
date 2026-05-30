@@ -60,6 +60,7 @@ def _build_out(d: DemandeAchat) -> DemandeAchatOut:
         statut=d.statut,
         date=d.date,
         notes=d.notes,
+        tva_estimee=d.tva_estimee,
         bon_commande_id=d.bon_commande_id,
         lignes=[
             {
@@ -131,6 +132,7 @@ def create_demande(
         statut="brouillon",
         date=data.date or datetime.date.today(),
         notes=data.notes,
+        tva_estimee=data.tva_estimee,
     )
     db.add(demande)
     db.flush()
@@ -160,6 +162,8 @@ def update_demande(
 
     if data.notes is not None:
         demande.notes = data.notes or None
+    if data.tva_estimee is not None:
+        demande.tva_estimee = data.tva_estimee
 
     if data.lignes is not None:
         if not data.lignes:
@@ -230,6 +234,7 @@ def valider_demande(
         date=data.date_bc or datetime.date.today(),
         statut="brouillon",
         notes=data.notes_bc or demande.notes,
+        tva_incluse=data.tva_incluse,
     )
     db.add(bc)
     db.flush()

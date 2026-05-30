@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Date, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, Date, Text, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
@@ -13,6 +13,7 @@ class BonCommande(Base):
     statut         = Column(String, default="brouillon", nullable=False)  # brouillon | envoyé | reçu
     notes          = Column(Text, nullable=True)
     pdf_base64     = Column(Text, nullable=True)
+    tva_incluse    = Column(Boolean, nullable=False, default=False, server_default='false')
 
     fournisseur = relationship("Fournisseur")
     lignes      = relationship("LigneBonCommande", back_populates="bon_commande", cascade="all, delete-orphan")

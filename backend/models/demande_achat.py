@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Date, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, Date, Text, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
@@ -13,6 +13,7 @@ class DemandeAchat(Base):
     statut         = Column(String, default="brouillon", nullable=False)  # brouillon | envoyée | validée | annulée
     date           = Column(Date, default=datetime.date.today, nullable=False)
     notes          = Column(Text, nullable=True)
+    tva_estimee    = Column(Boolean, nullable=False, default=False, server_default='false')
     bon_commande_id = Column(Integer, ForeignKey("bons_commande.id"), nullable=True)
 
     fournisseur  = relationship("Fournisseur")

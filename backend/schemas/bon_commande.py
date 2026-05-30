@@ -28,6 +28,7 @@ class BonCommandeCreate(BaseModel):
     notes: Optional[str] = None
     lignes: List[LigneCommandeCreate]
     pdf_base64: Optional[str] = None
+    tva_incluse: bool = False
 
 
 class BonCommandeUpdate(BaseModel):
@@ -36,6 +37,7 @@ class BonCommandeUpdate(BaseModel):
     notes: Optional[str] = None
     lignes: Optional[List[LigneCommandeCreate]] = None
     pdf_base64: Optional[str] = None
+    tva_incluse: Optional[bool] = None
 
 
 class StatutCommandeUpdate(BaseModel):
@@ -50,6 +52,7 @@ class BonCommandeOut(BaseModel):
     notes: Optional[str]
     lignes: List[LigneCommandeOut]
     pdf_base64: Optional[str] = None
+    tva_incluse: bool = False
 
     class Config:
         from_attributes = True

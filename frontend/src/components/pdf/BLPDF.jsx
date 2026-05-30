@@ -62,8 +62,10 @@ const s = StyleSheet.create({
   notesText: { fontSize: 8.5, color: '#1a2332' },
 
   sigRow: { flexDirection: 'row', padding: '16 28 0', gap: 14 },
-  sigBox: { flex: 1, borderWidth: 0.5, borderColor: '#cbd5e1', borderRadius: 4, padding: '10 12', height: 60 },
+  sigBox: { flex: 1, borderWidth: 0.5, borderColor: '#cbd5e1', borderRadius: 4, padding: '10 12', minHeight: 70 },
   sigLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sigImg:    { maxHeight: 38, objectFit: 'contain', objectPositionX: 0, marginTop: 6 },
+  cachetImg: { height: 40, width: 40, objectFit: 'contain', marginTop: 4 },
 
   wordsRow: { padding: '10 28 0' },
   wordsLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#475569', marginBottom: 2 },
@@ -227,6 +229,8 @@ export default function BLPDF({ bl, client, produits, entreprise = {} }) {
         <View style={s.sigRow}>
           <View style={s.sigBox}>
             <Text style={s.sigLabel}>Livré par</Text>
+            {E.signature && <Image src={E.signature} style={s.sigImg} />}
+            {E.cachet    && <Image src={E.cachet}    style={s.cachetImg} />}
           </View>
           <View style={s.sigBox}>
             <Text style={s.sigLabel}>Reçu par (signature & cachet client)</Text>

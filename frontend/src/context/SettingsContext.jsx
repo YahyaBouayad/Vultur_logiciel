@@ -26,6 +26,8 @@ export const DEFAULT_SETTINGS = {
   prefixeFacture: 'FAC',
   // Personnalisation PDF
   logo: null,
+  signature: null,
+  cachet: null,
   couleurPrimaire: '#0d2c6e',
   couleurAccent: '#f06020',
   conditionsPaiement: '',
@@ -70,6 +72,8 @@ function fromApi(data) {
     devise:             data.devise             ?? 'MAD',
     prefixeFacture:     data.prefixe_facture    ?? 'FAC',
     logo:               data.logo               ?? null,
+    signature:          data.signature          ?? null,
+    cachet:             data.cachet             ?? null,
     couleurPrimaire:    data.couleur_primaire    ?? '#0d2c6e',
     couleurAccent:      data.couleur_accent      ?? '#f06020',
     conditionsPaiement: data.conditions_paiement ?? '',

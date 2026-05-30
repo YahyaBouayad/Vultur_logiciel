@@ -13,6 +13,7 @@ class DemandeAchatCreate(BaseModel):
     fournisseur_id: int
     date: Optional[datetime.date] = None
     notes: Optional[str] = None
+    tva_estimee: bool = False
     lignes: List[LigneDemandeAchatCreate]
 
 
@@ -24,6 +25,7 @@ class LigneDemandeAchatUpdate(BaseModel):
 
 class DemandeAchatUpdate(BaseModel):
     notes: Optional[str] = None
+    tva_estimee: Optional[bool] = None
     lignes: Optional[List[LigneDemandeAchatUpdate]] = None
 
 
@@ -37,6 +39,7 @@ class DemandeAchatValider(BaseModel):
     lignes: Optional[List[LigneValider]] = None
     date_bc: Optional[datetime.date] = None
     notes_bc: Optional[str] = None
+    tva_incluse: bool = False
 
 
 class LigneDemandeAchatOut(BaseModel):
@@ -64,6 +67,7 @@ class DemandeAchatOut(BaseModel):
     statut: str
     date: datetime.date
     notes: Optional[str] = None
+    tva_estimee: bool = False
     bon_commande_id: Optional[int] = None
     lignes: List[LigneDemandeAchatOut]
 

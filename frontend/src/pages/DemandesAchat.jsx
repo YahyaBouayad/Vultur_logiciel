@@ -6,7 +6,7 @@ import {
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
   CheckCircleOutlined, SendOutlined, StopOutlined,
-  FilePdfOutlined, MinusCircleOutlined, EyeOutlined,
+  FilePdfOutlined, MinusCircleOutlined,
 } from '@ant-design/icons'
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -91,6 +91,11 @@ export default function DemandesAchat() {
       setDemandes(da.data)
       setFournisseurs(f.data)
       setProduits(p.data)
+      // Rafraîchit le drawer si une DA était sélectionnée
+      setSelected(prev => {
+        if (!prev) return prev
+        return da.data.find(d => d.id === prev.id) || prev
+      })
     } finally {
       setLoading(false)
     }
@@ -138,7 +143,7 @@ export default function DemandesAchat() {
       prix_unitaire: l.prix_unitaire,
     }))
     setLignes(ls)
-    setTvaActive(false)
+    setTvaActive(da.tva_estimee || false)
     form.setFieldsValue({
       fournisseur_id: da.fournisseur_id,
       date: da.date ? dayjs(da.date) : dayjs(),
@@ -154,25 +159,25 @@ export default function DemandesAchat() {
     }
     setFormLoading(true)
     try {
-      const payload = {
-        fournisseur_id: values.fournisseur_id,
-        date: values.date?.format('YYYY-MM-DD'),
-        notes: values.notes || null,
-        lignes: lignes.map(l => ({
-          produit_id: l.produit_id,
-          quantite_demandee: l.quantite_demandee,
-          prix_unitaire: tvaActive
-            ? Math.round((l.prix_unitaire || 0) * 1.2 * 100) / 100
-            : l.prix_unitaire,
-        })),
-      }
+      const lignesPayload = lignes.map(l => ({
+        produit_id: l.produit_id,
+        quantite_demandee: l.quantite_demandee,
+        prix_unitaire: l.prix_unitaire,  // TVA = affichage seul sur les DA
+      }))
       if (modalMode === 'create') {
-        await api.post('/demandes-achat', payload)
+        await api.post('/demandes-achat', {
+          fournisseur_id: values.fournisseur_id,
+          date: values.date?.format('YYYY-MM-DD'),
+          notes: values.notes || null,
+          tva_estimee: tvaActive,
+          lignes: lignesPayload,
+        })
         message.success('Demande créée')
       } else {
         await api.put(`/demandes-achat/${editingId}`, {
-          notes: payload.notes,
-          lignes: payload.lignes,
+          notes: values.notes || null,
+          tva_estimee: tvaActive,
+          lignes: lignesPayload,
         })
         message.success('Demande mise à jour')
       }
@@ -227,7 +232,7 @@ export default function DemandesAchat() {
       prix_unitaire: l.prix_unitaire,
     }))
     setValiderLignes(ls)
-    setTvaValiderActive(false)
+    setTvaValiderActive(da.tva_estimee || false)  // pré-rempli depuis la DA
     validerForm.setFieldsValue({
       date_bc: dayjs(),
       notes_bc: '',
@@ -248,6 +253,7 @@ export default function DemandesAchat() {
         })),
         date_bc: values.date_bc?.format('YYYY-MM-DD'),
         notes_bc: values.notes_bc || null,
+        tva_incluse: tvaValiderActive,
       })
       message.success('Demande validée — Bon de commande créé')
       setValiderOpen(false)
@@ -269,6 +275,8 @@ export default function DemandesAchat() {
       ice:             settings.ice,
       rc:              settings.rc,
       logo:            settings.logo,
+      signature:       settings.signature,
+      cachet:          settings.cachet,
       couleurPrimaire: settings.couleurPrimaire,
       couleurAccent:   settings.couleurAccent,
       devise:          settings.devise,
@@ -561,18 +569,18 @@ export default function DemandesAchat() {
             borderRadius: tvaActive ? '0 0 8px 8px' : 8,
             border: tvaActive ? '1px solid #e2e8f0' : 'none',
           }}>
-            <Tooltip title={tvaActive ? "Désactiver l'affichage TVA" : 'Afficher le détail HT / TVA 20% / TTC'}>
+            <Tooltip title="Estimation informative — les prix de la demande ne sont pas modifiés. La TVA sera appliquée si activée lors de la validation en Bon de commande.">
               <Button
                 size="small"
                 type={tvaActive ? 'primary' : 'default'}
                 style={tvaActive ? { background: '#b45309', borderColor: '#b45309' } : {}}
                 onClick={() => setTvaActive(v => !v)}
               >
-                TVA 20%
+                TVA 20% {tvaActive ? '(estimation)' : ''}
               </Button>
             </Tooltip>
             <Text strong style={{ fontSize: 15 }}>
-              {tvaActive ? 'Total HT' : 'Total estimé'} : {fmt(totalLignes, devise)}
+              {tvaActive ? 'Estimé HT' : 'Total estimé'} : {fmt(totalLignes, devise)}
             </Text>
           </div>
         </div>

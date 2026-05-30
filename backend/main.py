@@ -25,6 +25,7 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE bons_livraison ADD COLUMN IF NOT EXISTS date_encaissement DATE"))
     _conn.execute(text("ALTER TABLE lignes_bon_commande ADD COLUMN IF NOT EXISTS remise NUMERIC(5,2) NOT NULL DEFAULT 0"))
     _conn.execute(text("ALTER TABLE bons_commande ADD COLUMN IF NOT EXISTS pdf_base64 TEXT"))
+    _conn.execute(text("ALTER TABLE bons_commande ADD COLUMN IF NOT EXISTS tva_incluse BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE factures ADD COLUMN IF NOT EXISTS tva_incluse BOOLEAN NOT NULL DEFAULT FALSE"))
     # Paramètres société — migration vers stockage BDD
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS nom VARCHAR"))
@@ -39,6 +40,8 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS devise VARCHAR NOT NULL DEFAULT 'MAD'"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prefixe_facture VARCHAR NOT NULL DEFAULT 'FAC'"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS logo TEXT"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS signature TEXT"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS cachet TEXT"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS couleur_primaire VARCHAR NOT NULL DEFAULT '#0d2c6e'"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS couleur_accent VARCHAR NOT NULL DEFAULT '#f06020'"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS conditions_paiement TEXT"))
@@ -126,6 +129,7 @@ with engine.connect() as _conn:
             bon_commande_id INTEGER REFERENCES bons_commande(id)
         )
     """))
+    _conn.execute(text("ALTER TABLE demandes_achat ADD COLUMN IF NOT EXISTS tva_estimee BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("""
         CREATE TABLE IF NOT EXISTS lignes_demande_achat (
             id SERIAL PRIMARY KEY,

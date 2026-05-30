@@ -80,6 +80,13 @@ const s = StyleSheet.create({
   ribLabel: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8 },
   ribValue: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#1a2332', letterSpacing: 0.5 },
 
+  // ─── SIGNATURES ──────────────────────────────────────────
+  sigRow:    { flexDirection: 'row', padding: '14 28 0', gap: 14 },
+  sigBox:    { flex: 1, borderWidth: 0.5, borderColor: '#cbd5e1', borderRadius: 4, padding: '10 12', minHeight: 70 },
+  sigLabel:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sigImg:    { maxHeight: 38, objectFit: 'contain', objectPositionX: 0, marginTop: 6 },
+  cachetImg: { height: 40, width: 40, objectFit: 'contain', marginTop: 4 },
+
   // ─── MENTIONS + FOOTER ───────────────────────────────────
   mentionsText: { padding: '8 28 0', fontSize: 7, color: '#94a3b8', lineHeight: 1.5 },
   footer: {
@@ -270,6 +277,18 @@ export function FacturePage({ facture, client, bl, produits, entreprise = {} }) 
           ? <Text style={s.mentionsText}>{E.mentionsLegales}</Text>
           : null
         }
+
+        {/* ── SIGNATURES ───────────────────────────────── */}
+        <View style={s.sigRow}>
+          <View style={s.sigBox}>
+            <Text style={s.sigLabel}>Émis par</Text>
+            {E.signature && <Image src={E.signature} style={s.sigImg} />}
+            {E.cachet    && <Image src={E.cachet}    style={s.cachetImg} />}
+          </View>
+          <View style={s.sigBox}>
+            <Text style={s.sigLabel}>Cachet & signature du client</Text>
+          </View>
+        </View>
 
         {/* ── FOOTER ───────────────────────────────────── */}
         <View style={s.footer} fixed>

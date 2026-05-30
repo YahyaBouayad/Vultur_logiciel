@@ -48,10 +48,16 @@ const s = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'flex-end', padding: '10 28 0' },
   totalBox: { borderWidth: 0.5, borderColor: '#94a3b8', borderRadius: 2 },
   totRow: { flexDirection: 'row', justifyContent: 'space-between', padding: '6 14', borderBottomWidth: 0.5, borderBottomColor: '#e2e8f0', minWidth: 200 },
+  totRowTva: { flexDirection: 'row', justifyContent: 'space-between', padding: '6 14', borderBottomWidth: 0.5, borderBottomColor: '#e2e8f0', minWidth: 200, backgroundColor: '#fffbeb' },
   totRowFinal: { flexDirection: 'row', justifyContent: 'space-between', padding: '8 14', minWidth: 200 },
   totLabel: { fontSize: 8.5, color: '#475569' },
+  totLabelTva: { fontSize: 8.5, color: '#92400e', fontFamily: 'Helvetica-Bold' },
   totValue: { fontSize: 8.5, fontFamily: 'Helvetica-Bold' },
+  totValueTva: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#92400e' },
   totLabelFinal: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#ffffff' },
+  tvaBadge: { marginHorizontal: 28, marginTop: 6, padding: '4 10', backgroundColor: '#fffbeb', borderWidth: 0.5, borderColor: '#fde68a', borderRadius: 3, flexDirection: 'row', alignItems: 'center' },
+  tvaBadgeText: { fontSize: 7.5, color: '#92400e', fontFamily: 'Helvetica-Bold' },
+  tvaBadgeNote: { fontSize: 7, color: '#b45309', marginLeft: 6 },
 
   notesBox: { margin: '10 28 0', borderWidth: 0.5, borderColor: '#cbd5e1', borderRadius: 4, padding: '8 12' },
   notesLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
@@ -89,8 +95,11 @@ export default function DemandeAchatPDF({ demande, entreprise = {} }) {
   const accent  = E.couleurAccent  || '#f06020'
   const devise  = E.devise || 'MAD'
 
-  const lignes = demande?.lignes || []
-  const total  = lignes.reduce((s, l) => s + Number(l.quantite_demandee) * Number(l.prix_unitaire), 0)
+  const lignes      = demande?.lignes || []
+  const totalHT     = lignes.reduce((s, l) => s + Number(l.quantite_demandee) * Number(l.prix_unitaire), 0)
+  const tvaEstimee  = demande?.tva_estimee === true
+  const montantTVA  = tvaEstimee ? totalHT * 0.2 : 0
+  const totalTTC    = tvaEstimee ? totalHT * 1.2 : totalHT
 
   const footerTxt = E.piedDePage
     || [E.nom, E.adresse, E.ville].filter(Boolean).join('  —  ')
@@ -179,12 +188,37 @@ export default function DemandeAchatPDF({ demande, entreprise = {} }) {
         {/* ── TOTAL ────────────────────────────────────── */}
         <View style={s.totalRow}>
           <View style={s.totalBox}>
-            <View style={[s.totRowFinal, { backgroundColor: primary }]}>
-              <Text style={s.totLabelFinal}>Total estimé :</Text>
-              <Text style={[s.totLabelFinal, { color: accent }]}>{fmt(total)} {devise}</Text>
-            </View>
+            {tvaEstimee ? (
+              <>
+                <View style={s.totRow}>
+                  <Text style={s.totLabel}>Total HT :</Text>
+                  <Text style={s.totValue}>{fmt(totalHT)} {devise}</Text>
+                </View>
+                <View style={s.totRowTva}>
+                  <Text style={s.totLabelTva}>TVA 20% :</Text>
+                  <Text style={s.totValueTva}>{fmt(montantTVA)} {devise}</Text>
+                </View>
+                <View style={[s.totRowFinal, { backgroundColor: primary }]}>
+                  <Text style={s.totLabelFinal}>Total TTC estimé :</Text>
+                  <Text style={[s.totLabelFinal, { color: accent }]}>{fmt(totalTTC)} {devise}</Text>
+                </View>
+              </>
+            ) : (
+              <View style={[s.totRowFinal, { backgroundColor: primary }]}>
+                <Text style={s.totLabelFinal}>Total estimé :</Text>
+                <Text style={[s.totLabelFinal, { color: accent }]}>{fmt(totalHT)} {devise}</Text>
+              </View>
+            )}
           </View>
         </View>
+
+        {/* ── BANDEAU TVA ESTIMATION ───────────────────── */}
+        {tvaEstimee && (
+          <View style={s.tvaBadge}>
+            <Text style={s.tvaBadgeText}>TVA 20% — Estimation</Text>
+            <Text style={s.tvaBadgeNote}>Les prix unitaires sont HT. La TVA est calculée à titre indicatif.</Text>
+          </View>
+        )}
 
         {/* ── NOTES ────────────────────────────────────── */}
         {demande.notes && (

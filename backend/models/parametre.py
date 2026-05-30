@@ -33,6 +33,8 @@ class Parametre(Base):
 
     # Personnalisation PDF
     logo                = Column(Text,    nullable=True)
+    signature           = Column(Text,    nullable=True)
+    cachet              = Column(Text,    nullable=True)
     couleur_primaire    = Column(String,  nullable=False, default='#0d2c6e', server_default="'#0d2c6e'")
     couleur_accent      = Column(String,  nullable=False, default='#f06020', server_default="'#f06020'")
     conditions_paiement = Column(Text,    nullable=True)

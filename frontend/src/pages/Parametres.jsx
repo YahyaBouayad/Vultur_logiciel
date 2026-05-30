@@ -504,17 +504,20 @@ function OngletFacturation({ settings, saveSettings }) {
 
 /* ─── Onglet : Personnalisation PDF ──────────────────────── */
 function OngletPDF({ settings, saveSettings }) {
-  const [logoPreview,    setLogoPreview]    = useState(settings.logo || null)
-  const [couleurPrimaire, setCouleurPrimaire] = useState(settings.couleurPrimaire || '#1e293b')
-  const [couleurAccent,   setCouleurAccent]   = useState(settings.couleurAccent   || '#10b981')
-  const [conditions,     setConditions]     = useState(settings.conditionsPaiement || '')
-  const [mentions,       setMentions]       = useState(settings.mentionsLegales   || '')
-  const [piedPage,       setPiedPage]       = useState(settings.piedDePage        || '')
-  const [afficherRemise, setAfficherRemise] = useState(settings.afficherRemise !== false)
+  const [logoPreview,       setLogoPreview]       = useState(settings.logo       || null)
+  const [signaturePreview,  setSignaturePreview]  = useState(settings.signature  || null)
+  const [cachetPreview,     setCachetPreview]     = useState(settings.cachet     || null)
+  const [couleurPrimaire,   setCouleurPrimaire]   = useState(settings.couleurPrimaire || '#1e293b')
+  const [couleurAccent,     setCouleurAccent]     = useState(settings.couleurAccent   || '#10b981')
+  const [conditions,        setConditions]        = useState(settings.conditionsPaiement || '')
+  const [mentions,          setMentions]          = useState(settings.mentionsLegales   || '')
+  const [piedPage,          setPiedPage]          = useState(settings.piedDePage        || '')
+  const [afficherRemise,    setAfficherRemise]    = useState(settings.afficherRemise !== false)
 
-  // Synchronise les états locaux si les settings sont rechargés depuis la BDD
   useEffect(() => {
     setLogoPreview(settings.logo || null)
+    setSignaturePreview(settings.signature || null)
+    setCachetPreview(settings.cachet || null)
     setCouleurPrimaire(settings.couleurPrimaire || '#1e293b')
     setCouleurAccent(settings.couleurAccent || '#10b981')
     setConditions(settings.conditionsPaiement || '')
@@ -545,6 +548,42 @@ function OngletPDF({ settings, saveSettings }) {
     setLogoPreview(null)
     saveSettings({ logo: null })
     message.success('Logo supprimé')
+  }
+
+  const handleSignatureUpload = async (file) => {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const resized = await resizeImage(e.target.result, 320, 120)
+      setSignaturePreview(resized)
+      saveSettings({ signature: resized })
+      message.success('Signature enregistrée')
+    }
+    reader.readAsDataURL(file)
+    return false
+  }
+
+  const removeSignature = () => {
+    setSignaturePreview(null)
+    saveSettings({ signature: null })
+    message.success('Signature supprimée')
+  }
+
+  const handleCachetUpload = async (file) => {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const resized = await resizeImage(e.target.result, 150, 150)
+      setCachetPreview(resized)
+      saveSettings({ cachet: resized })
+      message.success('Cachet enregistré')
+    }
+    reader.readAsDataURL(file)
+    return false
+  }
+
+  const removeCachet = () => {
+    setCachetPreview(null)
+    saveSettings({ cachet: null })
+    message.success('Cachet supprimé')
   }
 
   const handleSaveColors = () => {
@@ -597,6 +636,80 @@ function OngletPDF({ settings, saveSettings }) {
             Formats : PNG, JPG, SVG<br />
             Fond transparent recommandé (PNG)<br />
             Taille idéale : 400 × 160 px max
+          </Text>
+        </div>
+      </div>
+
+      <Divider />
+
+      {/* SIGNATURE & CACHET */}
+      <SectionTitle icon={<UploadOutlined />}>Signature & Cachet de la société</SectionTitle>
+      <Text type="secondary" style={{ display: 'block', marginBottom: 16, fontSize: 12 }}>
+        Ces visuels apparaissent dans la zone de signature de vos BL et factures PDF.
+      </Text>
+      <div style={{ display: 'flex', gap: 40, marginBottom: 24, flexWrap: 'wrap' }}>
+
+        {/* Signature */}
+        <div>
+          <Text strong style={{ display: 'block', marginBottom: 8 }}>Signature</Text>
+          <div style={{
+            width: 220, height: 100, border: '1.5px dashed #cbd5e1',
+            borderRadius: 8, background: '#f8fafc',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', marginBottom: 10,
+          }}>
+            {signaturePreview
+              ? <img src={signaturePreview} alt="signature" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              : <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', padding: 12 }}>Aucune signature<br />Aperçu ici</Text>
+            }
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Upload accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              showUploadList={false} beforeUpload={handleSignatureUpload}>
+              <Button icon={<UploadOutlined />}>
+                {signaturePreview ? 'Changer la signature' : 'Téléverser la signature'}
+              </Button>
+            </Upload>
+            {signaturePreview && (
+              <Button icon={<DeleteOutlined />} danger onClick={removeSignature}>
+                Supprimer
+              </Button>
+            )}
+          </div>
+          <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8 }}>
+            PNG fond transparent recommandé
+          </Text>
+        </div>
+
+        {/* Cachet */}
+        <div>
+          <Text strong style={{ display: 'block', marginBottom: 8 }}>Cachet</Text>
+          <div style={{
+            width: 110, height: 110, border: '1.5px dashed #cbd5e1',
+            borderRadius: '50%', background: '#f8fafc',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', marginBottom: 10,
+          }}>
+            {cachetPreview
+              ? <img src={cachetPreview} alt="cachet" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              : <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', padding: 12 }}>Aucun cachet</Text>
+            }
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Upload accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              showUploadList={false} beforeUpload={handleCachetUpload}>
+              <Button icon={<UploadOutlined />}>
+                {cachetPreview ? 'Changer le cachet' : 'Téléverser le cachet'}
+              </Button>
+            </Upload>
+            {cachetPreview && (
+              <Button icon={<DeleteOutlined />} danger onClick={removeCachet}>
+                Supprimer
+              </Button>
+            )}
+          </div>
+          <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8 }}>
+            PNG fond transparent recommandé
           </Text>
         </div>
       </div>

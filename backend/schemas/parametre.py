@@ -32,6 +32,8 @@ class ParametreOut(BaseModel):
 
     # Personnalisation PDF
     logo: Optional[str] = None
+    signature: Optional[str] = None
+    cachet: Optional[str] = None
     couleur_primaire: str = '#0d2c6e'
     couleur_accent: str = '#f06020'
     conditions_paiement: Optional[str] = None
@@ -78,6 +80,8 @@ class ParametreUpdate(BaseModel):
 
     # Personnalisation PDF
     logo: Optional[str] = None
+    signature: Optional[str] = None
+    cachet: Optional[str] = None
     couleur_primaire: Optional[str] = None
     couleur_accent: Optional[str] = None
     conditions_paiement: Optional[str] = None

@@ -49,6 +49,7 @@ def create_bon(data: BonCommandeCreate, db: Session = Depends(get_db), _: Utilis
         notes=data.notes,
         statut="brouillon",
         pdf_base64=data.pdf_base64,
+        tva_incluse=data.tva_incluse,
     )
     db.add(bc)
     db.flush()
@@ -81,6 +82,7 @@ def update_bon(bc_id: int, data: BonCommandeUpdate, db: Session = Depends(get_db
     if data.date is not None:           bc.date           = data.date
     if data.notes is not None:          bc.notes          = data.notes or None
     if data.pdf_base64 is not None:     bc.pdf_base64     = data.pdf_base64
+    if data.tva_incluse is not None:    bc.tva_incluse    = data.tva_incluse
 
     if data.lignes is not None:
         if not data.lignes:
