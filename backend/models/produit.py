@@ -3,6 +3,13 @@ from database import Base
 
 UNITES = ['unité', 'kg', 'g', 'L', 'mL']
 
+TYPES_PRODUIT = [
+    'Dispositif médical classé 1',
+    'Dispositif médical classé 2',
+    'Dispositif médical classé 3',
+    'Cosmétique',
+]
+
 
 class Produit(Base):
     __tablename__ = "produits"
@@ -14,3 +21,4 @@ class Produit(Base):
     prix            = Column(Numeric(10, 2), nullable=False)
     alerte_ignoree  = Column(Boolean, default=False, nullable=False)
     unite           = Column(String, nullable=False, default='unité')
+    type_produit    = Column(String, nullable=True)

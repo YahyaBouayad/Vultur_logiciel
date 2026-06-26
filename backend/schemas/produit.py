@@ -10,6 +10,7 @@ class ProduitCreate(BaseModel):
     prix: Decimal
     alerte_ignoree: bool = False
     unite: str = 'unité'
+    type_produit: Optional[str] = None
 
 
 class ProduitUpdate(BaseModel):
@@ -19,6 +20,7 @@ class ProduitUpdate(BaseModel):
     prix: Optional[Decimal] = None
     alerte_ignoree: Optional[bool] = None
     unite: Optional[str] = None
+    type_produit: Optional[str] = None
 
 
 class ProduitOut(BaseModel):
@@ -29,6 +31,7 @@ class ProduitOut(BaseModel):
     prix: Decimal
     alerte_ignoree: bool
     unite: str = 'unité'
+    type_produit: Optional[str] = None
 
     class Config:
         from_attributes = True

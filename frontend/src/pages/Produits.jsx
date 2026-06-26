@@ -18,6 +18,20 @@ const { Option } = Select
 const SEUIL = 5
 const UNITES = ['unité', 'kg', 'g', 'L', 'mL']
 
+const TYPES_PRODUIT = [
+  'Dispositif médical classé 1',
+  'Dispositif médical classé 2',
+  'Dispositif médical classé 3',
+  'Cosmétique',
+]
+
+const TYPE_COLOR = {
+  'Dispositif médical classé 1': 'blue',
+  'Dispositif médical classé 2': 'orange',
+  'Dispositif médical classé 3': 'red',
+  'Cosmétique':                  'purple',
+}
+
 function fmtStock(stock) {
   const n = parseFloat(stock)
   return n % 1 === 0 ? String(n) : n.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
@@ -38,6 +52,7 @@ export default function Produits() {
   const [loading, setLoading]             = useState(false)
   const [search, setSearch]               = useState('')
   const [filtre, setFiltre]               = useState('all')
+  const [filtreType, setFiltreType]       = useState(null)
 
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingProduit, setEditing]      = useState(null)
@@ -88,8 +103,9 @@ export default function Produits() {
     if (filtre === 'rupture') base = base.filter(p => p.stock === 0 && !p.alerte_ignoree)
     if (filtre === 'faible')  base = base.filter(p => p.stock > 0 && p.stock <= SEUIL && !p.alerte_ignoree)
     if (filtre === 'ignore')  base = base.filter(p => p.alerte_ignoree)
+    if (filtreType)           base = base.filter(p => p.type_produit === filtreType)
     setFiltered(base)
-  }, [search, produits, filtre])
+  }, [search, produits, filtre, filtreType])
 
   const openAdd = () => {
     setEditing(null)
@@ -205,6 +221,15 @@ export default function Produits() {
       title: 'Nom',
       dataIndex: 'nom',
       key: 'nom',
+    },
+    {
+      title: 'Type',
+      dataIndex: 'type_produit',
+      key: 'type_produit',
+      width: 200,
+      render: (v) => v
+        ? <Tag color={TYPE_COLOR[v] || 'default'} style={{ fontSize: 11 }}>{v}</Tag>
+        : <Text type="secondary" style={{ fontSize: 11 }}>—</Text>,
     },
     {
       title: 'Prix',
@@ -329,8 +354,19 @@ export default function Produits() {
             placeholder="Rechercher par nom ou référence..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ maxWidth: 300 }}
+            style={{ maxWidth: 280 }}
             allowClear
+          />
+          <Select
+            placeholder="Filtrer par type"
+            allowClear
+            value={filtreType}
+            onChange={setFiltreType}
+            style={{ minWidth: 230 }}
+            options={TYPES_PRODUIT.map(t => ({
+              value: t,
+              label: <Tag color={TYPE_COLOR[t]} style={{ margin: 0 }}>{t}</Tag>,
+            }))}
           />
           <Segmented
             value={filtre}
@@ -371,6 +407,16 @@ export default function Produits() {
           </Form.Item>
           <Form.Item name="reference" label="Référence" rules={[{ required: true, message: 'Référence requise' }]}>
             <Input placeholder="Ex : AMX-500" />
+          </Form.Item>
+          <Form.Item name="type_produit" label="Type de produit">
+            <Select
+              placeholder="Sélectionner un type (optionnel)"
+              allowClear
+              options={TYPES_PRODUIT.map(t => ({
+                value: t,
+                label: <span><Tag color={TYPE_COLOR[t]} style={{ margin: 0, marginRight: 6 }}>{t.charAt(0)}</Tag>{t}</span>,
+              }))}
+            />
           </Form.Item>
           <Row gutter={12}>
             <Col span={12}>

@@ -72,6 +72,7 @@ with engine.connect() as _conn:
     """))
     # Production module — nouvelles colonnes et tables
     _conn.execute(text("ALTER TABLE produits ADD COLUMN IF NOT EXISTS unite VARCHAR NOT NULL DEFAULT 'unité'"))
+    _conn.execute(text("ALTER TABLE produits ADD COLUMN IF NOT EXISTS type_produit VARCHAR"))
     _conn.execute(text("ALTER TABLE produits ALTER COLUMN stock TYPE NUMERIC(12,3) USING stock::numeric"))
     _conn.execute(text("ALTER TABLE stock_mouvements ALTER COLUMN quantite TYPE NUMERIC(12,3) USING quantite::numeric"))
     _conn.execute(text("""
