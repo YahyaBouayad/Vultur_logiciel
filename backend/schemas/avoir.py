@@ -28,3 +28,4 @@ class AvoirDetailOut(AvoirOut):
     facture_numero: str
     facture_date_emission: Optional[date]
     client_id: Optional[int]
+    facture_taux_tva: Optional[float] = None  # TVA propre aux factures Hulio

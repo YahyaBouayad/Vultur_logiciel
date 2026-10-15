@@ -57,6 +57,8 @@ from utils.calculs import montant_ht_facture as _montant_ht
 def _build_out(f, taux_tva: float = 0.0) -> FactureOut:
     out = FactureOut.model_validate(f)
     out.montant_ht = _montant_ht(f, taux_tva)
+    if f.hulio:
+        out.taux_tva = float(f.hulio.taux_tva or 0)
     return out
 
 
@@ -207,7 +209,8 @@ def update_facture(facture_id: int, data: FactureUpdate, db: Session = Depends(g
         f.date_echeance = data.date_echeance
     if data.notes is not None:
         f.notes = data.notes or None
-    if data.tva_incluse is not None:
+    # Facture Hulio : prix PPM toujours TTC, la TVA est portée par le détail Hulio
+    if data.tva_incluse is not None and f.type_facture != "hulio":
         f.tva_incluse = data.tva_incluse
     db.commit()
     db.refresh(f)

@@ -7,7 +7,7 @@ from models.bon_commande import BonCommande, LigneBonCommande
 from models.produit import Produit
 from models.stock_mouvement import StockMouvement
 from models.utilisateur import Utilisateur
-from schemas.bon_commande import BonCommandeCreate, BonCommandeUpdate, BonCommandeOut, StatutCommandeUpdate
+from schemas.bon_commande import BonCommandeCreate, BonCommandeUpdate, BonCommandeOut, BonCommandePdfOut, StatutCommandeUpdate
 from security import get_current_user
 
 router = APIRouter(prefix="/bons-commande", tags=["Bons de commande"])
@@ -36,6 +36,16 @@ def get_bon(bc_id: int, db: Session = Depends(get_db), _: Utilisateur = Depends(
     if not bc:
         raise HTTPException(status_code=404, detail="Bon de commande introuvable")
     return bc
+
+
+@router.get("/{bc_id}/pdf", response_model=BonCommandePdfOut)
+def get_bon_pdf(bc_id: int, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
+    bc = db.query(BonCommande).filter(BonCommande.id == bc_id).first()
+    if not bc:
+        raise HTTPException(status_code=404, detail="Bon de commande introuvable")
+    if not bc.pdf_base64:
+        raise HTTPException(status_code=404, detail="Aucun PDF joint à ce bon de commande")
+    return {"pdf_base64": bc.pdf_base64}
 
 
 @router.post("", response_model=BonCommandeOut, status_code=201)
@@ -81,7 +91,8 @@ def update_bon(bc_id: int, data: BonCommandeUpdate, db: Session = Depends(get_db
     if data.fournisseur_id is not None: bc.fournisseur_id = data.fournisseur_id
     if data.date is not None:           bc.date           = data.date
     if data.notes is not None:          bc.notes          = data.notes or None
-    if data.pdf_base64 is not None:     bc.pdf_base64     = data.pdf_base64
+    # Champ envoyé explicitement : une valeur remplace le PDF, null le supprime
+    if "pdf_base64" in data.model_fields_set: bc.pdf_base64 = data.pdf_base64
     if data.tva_incluse is not None:    bc.tva_incluse    = data.tva_incluse
 
     if data.lignes is not None:

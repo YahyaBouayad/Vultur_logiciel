@@ -29,6 +29,7 @@ def get_all_avoirs(db: Session = Depends(get_db), _: Utilisateur = Depends(get_c
             facture_numero=a.facture.numero if a.facture else "—",
             facture_date_emission=a.facture.date_emission if a.facture else None,
             client_id=a.facture.client_id if a.facture else None,
+            facture_taux_tva=float(a.facture.hulio.taux_tva or 0) if a.facture and a.facture.hulio else None,
             numero=a.numero,
             date=a.date,
             montant_ht=float(a.montant_ht),

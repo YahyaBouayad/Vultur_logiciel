@@ -14,6 +14,7 @@ class StockMouvement(Base):
     date                 = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     bon_livraison_id     = Column(Integer, ForeignKey("bons_livraison.id"), nullable=True)
     ordre_fabrication_id = Column(Integer, ForeignKey("ordres_fabrication.id"), nullable=True)
+    livraison_hulio_id   = Column(Integer, ForeignKey("livraisons_hulio.id"), nullable=True)
     notes                = Column(String, nullable=True)
 
     produit           = relationship("Produit")

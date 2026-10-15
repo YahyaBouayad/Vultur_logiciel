@@ -1,7 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional
 
-TYPES_CLIENT = {"pharmacie", "clinique", "hopital", "particulier", "parapharmacie", "grossiste", "cabinet_medical"}
+TYPES_CLIENT = {"pharmacie", "clinique", "hopital", "particulier", "parapharmacie", "grossiste", "cabinet_medical", "hulio"}
+
+# Types de clients personnes physiques : pas d'ICE
+TYPES_SANS_ICE = {"particulier", "hulio"}
 
 
 class ClientCreate(BaseModel):
@@ -12,6 +15,9 @@ class ClientCreate(BaseModel):
     adresse: Optional[str] = None
     mail: Optional[str] = None
     ice: Optional[str] = None
+    nom_assure: Optional[str] = None
+    immatriculation: Optional[str] = None
+    numero_prise_en_charge: Optional[str] = None
 
 
 class ClientUpdate(BaseModel):
@@ -22,6 +28,9 @@ class ClientUpdate(BaseModel):
     adresse: Optional[str] = None
     mail: Optional[str] = None
     ice: Optional[str] = None
+    nom_assure: Optional[str] = None
+    immatriculation: Optional[str] = None
+    numero_prise_en_charge: Optional[str] = None
 
 
 class ClientOut(BaseModel):
@@ -34,6 +43,9 @@ class ClientOut(BaseModel):
     adresse: Optional[str]
     mail: Optional[str]
     ice: Optional[str]
+    nom_assure: Optional[str] = None
+    immatriculation: Optional[str] = None
+    numero_prise_en_charge: Optional[str] = None
 
     class Config:
         from_attributes = True

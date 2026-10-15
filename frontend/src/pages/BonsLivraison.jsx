@@ -11,7 +11,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useImpayes } from '../context/ImpayesContext'
-import { PDFDownloadLink } from '@react-pdf/renderer'
+import { pdf } from '@react-pdf/renderer'
 import dayjs from 'dayjs'
 import api from '../api/axios'
 import { useSettings } from '../context/SettingsContext'
@@ -60,6 +60,32 @@ export default function BonsLivraison() {
   const { refresh: refreshImpayes } = useImpayes()
   const [form] = Form.useForm()
   const searchTimer = useRef(null)
+  const [pdfLoadingId, setPdfLoadingId] = useState(null)
+
+  // Génère le PDF au clic uniquement (évite de rendre un PDF par ligne du tableau)
+  const telechargerPDF = async (bl) => {
+    setPdfLoadingId(bl.id)
+    try {
+      const blob = await pdf(
+        <BLPDF
+          bl={bl}
+          client={clients.find(c => c.id === bl.client_id)}
+          produits={produits}
+          entreprise={settings}
+        />
+      ).toBlob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `BL-${String(bl.id).padStart(4, '0')}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      message.error('Erreur lors de la génération du PDF')
+    } finally {
+      setPdfLoadingId(null)
+    }
+  }
 
   // Charger clients et produits une seule fois
   useEffect(() => {
@@ -324,25 +350,11 @@ export default function BonsLivraison() {
               Détail
             </Button>
           </Tooltip>
-          <PDFDownloadLink
-            document={
-              <BLPDF
-                bl={record}
-                client={clients.find(c => c.id === record.client_id)}
-                produits={produits}
-                entreprise={settings}
-              />
-            }
-            fileName={`BL-${String(record.id).padStart(4, '0')}.pdf`}
-            style={{ textDecoration: 'none' }}
-          >
-            {({ loading }) => (
-              <Tooltip title="Télécharger PDF">
-                <Button size="small" icon={<FilePdfOutlined />} loading={loading}
-                  style={{ color: '#0ea5e9', borderColor: '#0ea5e9' }} />
-              </Tooltip>
-            )}
-          </PDFDownloadLink>
+          <Tooltip title="Télécharger PDF">
+            <Button size="small" icon={<FilePdfOutlined />} loading={pdfLoadingId === record.id}
+              onClick={() => telechargerPDF(record)}
+              style={{ color: '#0ea5e9', borderColor: '#0ea5e9' }} />
+          </Tooltip>
           {record.statut !== 'livré' && (
             <Tooltip title="Modifier">
               <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
@@ -649,25 +661,11 @@ export default function BonsLivraison() {
         extra={
           <Space>
             {selected && (
-              <PDFDownloadLink
-                document={
-                  <BLPDF
-                    bl={selected}
-                    client={clients.find(c => c.id === selected.client_id)}
-                    produits={produits}
-                    entreprise={settings}
-                  />
-                }
-                fileName={`BL-${String(selected.id).padStart(4, '0')}.pdf`}
-                style={{ textDecoration: 'none' }}
-              >
-                {({ loading }) => (
-                  <Button icon={<FilePdfOutlined />} loading={loading}
-                    style={{ color: '#0ea5e9', borderColor: '#0ea5e9' }}>
-                    PDF
-                  </Button>
-                )}
-              </PDFDownloadLink>
+              <Button icon={<FilePdfOutlined />} loading={pdfLoadingId === selected.id}
+                onClick={() => telechargerPDF(selected)}
+                style={{ color: '#0ea5e9', borderColor: '#0ea5e9' }}>
+                PDF
+              </Button>
             )}
             {selected?.statut !== 'livré' && (
               <Button icon={<EditOutlined />}

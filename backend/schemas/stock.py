@@ -18,6 +18,7 @@ class MouvementOut(BaseModel):
     date: datetime
     bon_livraison_id: Optional[int]
     ordre_fabrication_id: Optional[int] = None
+    livraison_hulio_id: Optional[int] = None
     notes: Optional[str]
 
     class Config:

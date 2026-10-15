@@ -11,5 +11,6 @@ from .utilisateur import Utilisateur
 from .parametre import Parametre
 from .recette import Recette, LigneRecette
 from .ordre_fabrication import OrdreFabrication
-from .stock_mouvement import StockMouvement  # après OrdreFabrication (FK)
+from .hulio import TraitementHulio, LivraisonHulio, FactureHulio
+from .stock_mouvement import StockMouvement  # après OrdreFabrication et LivraisonHulio (FK)
 from .demande_achat import DemandeAchat, LigneDemandeAchat

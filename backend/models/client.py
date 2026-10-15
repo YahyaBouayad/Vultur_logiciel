@@ -14,3 +14,8 @@ class Client(Base):
     adresse     = Column(String, nullable=True)
     mail        = Column(String, nullable=True)
     ice         = Column(String, nullable=True)  # NULL si particulier = True
+
+    # Patients Hulio (facture ANAM) — l'assuré peut être différent du bénéficiaire (patient)
+    nom_assure             = Column(String, nullable=True)
+    immatriculation        = Column(String, nullable=True)
+    numero_prise_en_charge = Column(String, nullable=True)

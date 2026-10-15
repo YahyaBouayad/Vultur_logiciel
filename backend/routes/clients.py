@@ -3,15 +3,16 @@ from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
 from models.client import Client
+from models.hulio import TraitementHulio
 from models.utilisateur import Utilisateur
-from schemas.client import ClientCreate, ClientUpdate, ClientOut, TYPES_CLIENT
+from schemas.client import ClientCreate, ClientUpdate, ClientOut, TYPES_CLIENT, TYPES_SANS_ICE
 from security import get_current_user
 
 router = APIRouter(prefix="/clients", tags=["Clients"])
 
 
 def _sync_particulier(client: Client):
-    client.particulier = (client.type_client == "particulier")
+    client.particulier = client.type_client in TYPES_SANS_ICE
 
 
 @router.get("", response_model=List[ClientOut])
@@ -31,7 +32,7 @@ def get_client(client_id: int, db: Session = Depends(get_db), _: Utilisateur = D
 def create_client(data: ClientCreate, db: Session = Depends(get_db), _: Utilisateur = Depends(get_current_user)):
     if data.type_client not in TYPES_CLIENT:
         raise HTTPException(status_code=400, detail=f"Type client invalide. Valeurs : {sorted(TYPES_CLIENT)}")
-    is_particulier = data.type_client == "particulier"
+    is_particulier = data.type_client in TYPES_SANS_ICE
     if is_particulier and data.ice:
         raise HTTPException(status_code=400, detail="Un particulier ne peut pas avoir d'ICE")
     payload = data.model_dump()
@@ -65,5 +66,7 @@ def delete_client(client_id: int, db: Session = Depends(get_db), _: Utilisateur 
     client = db.query(Client).filter(Client.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client introuvable")
+    if db.query(TraitementHulio).filter(TraitementHulio.client_id == client_id).first():
+        raise HTTPException(status_code=400, detail="Impossible de supprimer : ce patient a des traitements Hulio. Supprimez-les d'abord.")
     db.delete(client)
     db.commit()

@@ -25,12 +25,16 @@ const TYPE_CLIENT = {
   grossiste:      { label: 'Grossiste',       color: 'orange',   icon: <BankOutlined /> },
   cabinet_medical:{ label: 'Cabinet médical', color: 'purple',   icon: <HeartOutlined /> },
   particulier:    { label: 'Particulier',     color: 'default',  icon: <UserOutlined /> },
+  hulio:          { label: 'Hulio',           color: 'magenta',  icon: <UserOutlined /> },
 }
 
 const TypeTag = ({ type }) => {
   const cfg = TYPE_CLIENT[type] || { label: type || '—', color: 'default', icon: null }
   return <Tag icon={cfg.icon} color={cfg.color}>{cfg.label}</Tag>
 }
+
+// Personnes physiques : pas d'ICE
+const SANS_ICE = ['particulier', 'hulio']
 
 const TYPE_OPTIONS = Object.entries(TYPE_CLIENT).map(([value, { label }]) => ({ value, label }))
 
@@ -105,7 +109,12 @@ export default function Clients() {
   const handleSave = async (values) => {
     setFormLoading(true)
     const payload = { ...values }
-    if (payload.type_client === 'particulier') payload.ice = null
+    if (SANS_ICE.includes(payload.type_client)) payload.ice = null
+    if (payload.type_client !== 'hulio') {
+      payload.nom_assure = null
+      payload.immatriculation = null
+      payload.numero_prise_en_charge = null
+    }
     try {
       if (editingClient) {
         await api.put(`/clients/${editingClient.id}`, payload)
@@ -366,7 +375,7 @@ export default function Clients() {
               options={TYPE_OPTIONS}
               onChange={(v) => {
                 setTypeClient(v)
-                if (v === 'particulier') form.setFieldValue('ice', null)
+                if (SANS_ICE.includes(v)) form.setFieldValue('ice', null)
               }}
               placeholder="Sélectionner un type"
             />
@@ -392,10 +401,25 @@ export default function Clients() {
             <Input placeholder="Ex : 12 avenue Hassan II, Casablanca" />
           </Form.Item>
 
-          {typeClient !== 'particulier' && (
+          {!SANS_ICE.includes(typeClient) && (
             <Form.Item name="ice" label="ICE">
               <Input placeholder="Ex : 001234567000012" maxLength={15} />
             </Form.Item>
+          )}
+
+          {typeClient === 'hulio' && (
+            <>
+              <Divider orientation="left" style={{ fontSize: 13 }}>Assurance (facture ANAM)</Divider>
+              <Form.Item name="nom_assure" label="Nom et prénom de l'assuré" extra="Laisser vide si le patient est lui-même l'assuré">
+                <Input />
+              </Form.Item>
+              <Form.Item name="immatriculation" label="N° d'immatriculation de l'assuré">
+                <Input />
+              </Form.Item>
+              <Form.Item name="numero_prise_en_charge" label="N° de prise en charge">
+                <Input />
+              </Form.Item>
+            </>
           )}
         </Form>
       </Modal>

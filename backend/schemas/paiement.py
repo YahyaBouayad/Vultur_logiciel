@@ -34,3 +34,4 @@ class SuiviFactureOut(BaseModel):
     montant_paye: float
     solde: float
     paiements: List[PaiementOut]
+    type_facture: str = "standard"

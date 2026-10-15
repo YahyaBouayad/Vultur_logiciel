@@ -1,13 +1,15 @@
-import { Layout, Menu, Avatar, Dropdown, Typography } from 'antd'
+import { Suspense, useEffect, useState } from 'react'
+import { Layout, Menu, Avatar, Dropdown, Typography, Spin } from 'antd'
 import {
   DashboardOutlined, InboxOutlined, TeamOutlined, ShopOutlined,
   FileTextOutlined, ShoppingCartOutlined, LogoutOutlined,
   UserOutlined, FileDoneOutlined, AppstoreOutlined,
   ShoppingOutlined, DatabaseOutlined, SettingOutlined,
   AccountBookOutlined, FileProtectOutlined, CreditCardOutlined,
-  ExperimentOutlined,
+  ExperimentOutlined, MedicineBoxOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
+import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import { useImpayes } from '../context/ImpayesContext'
 
@@ -26,7 +28,7 @@ function BadgeCount({ count }) {
   )
 }
 
-function buildMenuItems(nbRetard) {
+function buildMenuItems(nbRetard, nbHulio) {
   return [
     {
       key: '/dashboard',
@@ -71,6 +73,15 @@ function buildMenuItems(nbRetard) {
       ],
     },
     {
+      key: '/suivi-hulio',
+      icon: <MedicineBoxOutlined />,
+      label: (
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          Suivi Hulio <BadgeCount count={nbHulio} />
+        </span>
+      ),
+    },
+    {
       key: '/production',
       icon: <ExperimentOutlined />,
       label: 'Production',
@@ -95,6 +106,12 @@ export default function AppLayout() {
   const { impayes } = useImpayes()
 
   const nbRetard = impayes.filter(i => i.niveau === 'retard' || i.niveau === 'critique').length
+
+  // Rappels échus + livraisons Hulio en retard, rafraîchis à chaque changement de page
+  const [nbHulio, setNbHulio] = useState(0)
+  useEffect(() => {
+    api.get('/hulio/alertes').then(r => setNbHulio(r.data.total)).catch(() => {})
+  }, [location.pathname])
 
   const userMenu = {
     items: [
@@ -142,7 +159,7 @@ export default function AppLayout() {
           onClick={({ key }) => {
             if (!['ventes', 'achats', 'referentiel'].includes(key)) navigate(key)
           }}
-          items={buildMenuItems(nbRetard)}
+          items={buildMenuItems(nbRetard, nbHulio)}
           style={{ background: '#1e293b', border: 'none', marginTop: 8 }}
           theme="dark"
         />
@@ -225,7 +242,9 @@ export default function AppLayout() {
         </Header>
 
         <Content style={{ margin: '24px', minHeight: 'calc(100vh - 112px)' }}>
-          <Outlet />
+          <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}><Spin size="large" /></div>}>
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

@@ -12,12 +12,20 @@ import {
 import RelancePDF from '../components/pdf/RelancePDF'
 import AvoirPDF from '../components/pdf/AvoirPDF'
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import dayjs from 'dayjs'
-import { PDFDownloadLink, pdf } from '@react-pdf/renderer'
+import { pdf } from '@react-pdf/renderer'
 import api from '../api/axios'
 import { useImpayes } from '../context/ImpayesContext'
 import { useSettings } from '../context/SettingsContext'
 import FacturePDF from '../components/pdf/FacturePDF'
+import FactureHulioPDF from '../components/pdf/FactureHulioPDF'
+
+const isHulio = (f) => f?.type_facture === 'hulio'
+
+// Les factures Hulio portent leur propre taux de TVA (PPM TTC) : on l'injecte dans les PDF relance / avoir
+const entreprisePour = (facture, settings) =>
+  isHulio(facture) ? { ...settings, tva: facture.taux_tva ?? 0 } : settings
 
 const { Title, Text } = Typography
 
@@ -193,7 +201,7 @@ export default function Factures() {
     setPaiLoading(true)
     try {
       const [blRes, relRes, avoirRes, paiRes] = await Promise.all([
-        api.get(`/bons-livraison/${facture.bon_livraison_id}`),
+        isHulio(facture) ? Promise.resolve({ data: null }) : api.get(`/bons-livraison/${facture.bon_livraison_id}`),
         api.get(`/factures/${facture.id}/relances`),
         api.get(`/factures/${facture.id}/avoirs`),
         api.get(`/factures/${facture.id}/paiements`),
@@ -211,6 +219,15 @@ export default function Factures() {
       setPaiLoading(false)
     }
   }
+
+  // Ouverture directe d'une facture depuis une autre page (ex : Suivi Hulio)
+  const location = useLocation()
+  useEffect(() => {
+    const id = location.state?.openFactureId
+    if (!id) return
+    window.history.replaceState({}, '')
+    api.get(`/factures/${id}`).then(r => openDrawer(r.data)).catch(() => message.error('Facture introuvable'))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openRelanceModal = (facture) => {
     setRelModalFact(facture)
@@ -259,7 +276,7 @@ export default function Factures() {
           client={clients.find(c => c.id === selected.client_id)}
           relance={relance}
           numRelance={numRelance}
-          entreprise={settings}
+          entreprise={entreprisePour(selected, settings)}
         />
       ).toBlob()
       const url = URL.createObjectURL(blob)
@@ -366,7 +383,7 @@ export default function Factures() {
           avoir={avoir}
           facture={selected}
           client={clients.find(c => c.id === selected.client_id)}
-          entreprise={settings}
+          entreprise={entreprisePour(selected, settings)}
         />
       ).toBlob()
       const url = URL.createObjectURL(blob)
@@ -464,16 +481,22 @@ export default function Factures() {
   const downloadFacturePDF = async (record) => {
     setPdfLoadingIds(prev => new Set([...prev, record.id]))
     try {
-      const r = await api.get(`/bons-livraison/${record.bon_livraison_id}`)
-      const blob = await pdf(
-        <FacturePDF
-          facture={record}
-          client={clients.find(c => c.id === record.client_id)}
-          bl={r.data}
-          produits={produits}
-          entreprise={settings}
-        />
-      ).toBlob()
+      let doc
+      if (isHulio(record)) {
+        doc = <FactureHulioPDF facture={record} entreprise={settings} />
+      } else {
+        const r = await api.get(`/bons-livraison/${record.bon_livraison_id}`)
+        doc = (
+          <FacturePDF
+            facture={record}
+            client={clients.find(c => c.id === record.client_id)}
+            bl={r.data}
+            produits={produits}
+            entreprise={settings}
+          />
+        )
+      }
+      const blob = await pdf(doc).toBlob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -509,7 +532,12 @@ export default function Factures() {
       dataIndex: 'numero',
       key: 'numero',
       width: 150,
-      render: (v) => <Text code style={{ fontWeight: 600 }}>{v}</Text>,
+      render: (v, r) => (
+        <Space size={4}>
+          <Text code style={{ fontWeight: 600 }}>{v}</Text>
+          {isHulio(r) && <Tag color="magenta" style={{ margin: 0 }}>Hulio</Tag>}
+        </Space>
+      ),
     },
     {
       title: 'Client',
@@ -718,27 +746,12 @@ export default function Factures() {
         width={520}
         extra={
           <Space>
-            {selected && selectedBL && (
-              <PDFDownloadLink
-                document={
-                  <FacturePDF
-                    facture={selected}
-                    client={clients.find(c => c.id === selected.client_id)}
-                    bl={selectedBL}
-                    produits={produits}
-                    entreprise={settings}
-                  />
-                }
-                fileName={`${selected.numero}.pdf`}
-                style={{ textDecoration: 'none' }}
-              >
-                {({ loading }) => (
-                  <Button icon={<FilePdfOutlined />} loading={loading}
-                    style={{ color: '#dc2626', borderColor: '#dc2626' }}>
-                    PDF
-                  </Button>
-                )}
-              </PDFDownloadLink>
+            {selected && (selectedBL || isHulio(selected)) && (
+              <Button icon={<FilePdfOutlined />} loading={pdfLoadingIds.has(selected.id)}
+                onClick={() => downloadFacturePDF(selected)}
+                style={{ color: '#dc2626', borderColor: '#dc2626' }}>
+                PDF
+              </Button>
             )}
             {selected?.statut === 'émise' && (
               <>
@@ -817,8 +830,9 @@ export default function Factures() {
                 <Text>{selected.date_echeance ? new Date(selected.date_echeance).toLocaleDateString('fr-FR') : '—'}</Text>
               </div>
               {(() => {
-                const taux = Number(settings?.tva) || 0
-                const incluse = selected.tva_incluse === true && taux > 0
+                // Facture Hulio : montant_ht déjà ramené en HT avec la TVA propre à la facture
+                const taux = isHulio(selected) ? Number(selected.taux_tva) || 0 : Number(settings?.tva) || 0
+                const incluse = !isHulio(selected) && selected.tva_incluse === true && taux > 0
                 const rawSum = selected.montant_ht || 0
                 const ht  = incluse ? rawSum / (1 + taux / 100) : rawSum
                 const tva = ht * taux / 100
@@ -851,10 +865,17 @@ export default function Factures() {
                   </div>
                 )
               })()}
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">BL associé</Text>
-                <Text code>#{selected.bon_livraison_id}</Text>
-              </div>
+              {isHulio(selected) ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text type="secondary">Origine</Text>
+                  <Tag color="magenta" style={{ margin: 0 }}>Traitement Hulio</Tag>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Text type="secondary">BL associé</Text>
+                  <Text code>#{selected.bon_livraison_id}</Text>
+                </div>
+              )}
             </Space>
 
             {/* ── RELANCES ── */}
@@ -1081,7 +1102,25 @@ export default function Factures() {
             <Divider />
             <Title level={5} style={{ marginBottom: 12 }}>Articles</Title>
 
-            {blLoading ? (
+            {isHulio(selected) && selected.hulio ? (
+              <Table
+                size="small"
+                dataSource={[selected.hulio]}
+                rowKey="produit_id"
+                pagination={false}
+                columns={[
+                  { title: 'Médicament', dataIndex: 'designation' },
+                  { title: 'Qté', dataIndex: 'quantite', width: 60 },
+                  { title: 'PPM', dataIndex: 'ppm', width: 100, render: (v) => `${Number(v).toFixed(2)} MAD` },
+                  { title: 'PBR', dataIndex: 'pbr', width: 90, render: (v) => v != null ? Number(v).toFixed(2) : '—' },
+                  { title: 'Taux', dataIndex: 'taux_prise_en_charge', width: 70, render: (v) => v != null ? `${Number(v)}%` : '—' },
+                  {
+                    title: 'Total', width: 110,
+                    render: (_, h) => <Text strong>{(h.quantite * Number(h.ppm)).toFixed(2)} MAD</Text>,
+                  },
+                ]}
+              />
+            ) : blLoading ? (
               <div style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>Chargement…</div>
             ) : !selectedBL ? (
               <Empty description="BL introuvable" />
@@ -1247,7 +1286,7 @@ export default function Factures() {
           <Form.Item name="date_echeance" label="Date d'échéance">
             <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Sélectionner une date" />
           </Form.Item>
-          {Number(settings?.tva) > 0 && (
+          {Number(settings?.tva) > 0 && !isHulio(editingFact) && (
             <Form.Item name="tva_incluse" label="TVA" valuePropName="checked">
               <Switch
                 checkedChildren="Prix TTC — TVA déjà incluse"

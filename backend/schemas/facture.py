@@ -21,10 +21,29 @@ class StatutFactureUpdate(BaseModel):
     statut: str  # émise | payée | annulée
 
 
+class FactureHulioOut(BaseModel):
+    traitement_id: int
+    produit_id: int
+    designation: str
+    quantite: int
+    ppm: float
+    pbr: Optional[float] = None
+    taux_prise_en_charge: Optional[float] = None
+    taux_tva: float = 0.0
+    numero_prise_en_charge: Optional[str] = None
+    assure_nom: Optional[str] = None
+    beneficiaire_nom: Optional[str] = None
+    immatriculation: Optional[str] = None
+    organisme: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class FactureOut(BaseModel):
     id: int
     numero: str
-    bon_livraison_id: int
+    bon_livraison_id: Optional[int] = None
     client_id: int
     date_emission: date
     date_echeance: Optional[date]
@@ -32,6 +51,9 @@ class FactureOut(BaseModel):
     notes: Optional[str]
     montant_ht: float = 0.0
     tva_incluse: bool = False
+    type_facture: str = "standard"
+    taux_tva: Optional[float] = None  # renseigné pour les factures Hulio (sinon : TVA des paramètres)
+    hulio: Optional[FactureHulioOut] = None
 
     class Config:
         from_attributes = True

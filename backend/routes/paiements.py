@@ -47,6 +47,7 @@ def _build_suivi(facture, paiements, taux_tva: float = 0.0) -> SuiviFactureOut:
         montant_paye=montant_paye,
         solde=solde,
         paiements=[PaiementOut.model_validate(p) for p in paiements],
+        type_facture=facture.type_facture,
     )
 
 

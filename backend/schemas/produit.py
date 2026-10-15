@@ -21,6 +21,8 @@ class ProduitUpdate(BaseModel):
     alerte_ignoree: Optional[bool] = None
     unite: Optional[str] = None
     type_produit: Optional[str] = None
+    suivi_hulio: Optional[bool] = None
+    pbr: Optional[Decimal] = None
 
 
 class ProduitOut(BaseModel):
@@ -32,6 +34,8 @@ class ProduitOut(BaseModel):
     alerte_ignoree: bool
     unite: str = 'unité'
     type_produit: Optional[str] = None
+    suivi_hulio: bool = False
+    pbr: Optional[Decimal] = None
 
     class Config:
         from_attributes = True

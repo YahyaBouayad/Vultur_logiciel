@@ -51,8 +51,12 @@ class BonCommandeOut(BaseModel):
     statut: str
     notes: Optional[str]
     lignes: List[LigneCommandeOut]
-    pdf_base64: Optional[str] = None
+    has_pdf: bool = False  # le contenu du PDF est servi par GET /bons-commande/{id}/pdf
     tva_incluse: bool = False
 
     class Config:
         from_attributes = True
+
+
+class BonCommandePdfOut(BaseModel):
+    pdf_base64: Optional[str] = None

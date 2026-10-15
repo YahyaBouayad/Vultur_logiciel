@@ -42,6 +42,13 @@ export const DEFAULT_SETTINGS = {
   prefixeDemande: 'DA',
   compteurDemande: 1,
   dureeArchivageDemandes: 90,
+  // Officine (factures Hulio)
+  officineNom: '', officineAdresse: '', officineVille: '',
+  officineTelephone: '', officineFax: '', officineInpe: '',
+  officinePatente: '', officineRc: '', officineIf: '', officineCnss: '',
+  tvaHulio: 0,
+  prefixeFactureHulio: 'HUL',
+  compteurFactureHulio: 1,
 }
 
 // snake_case API → camelCase frontend
@@ -86,6 +93,19 @@ function fromApi(data) {
     prefixeDemande:          data.prefixe_demande           ?? 'DA',
     compteurDemande:         data.compteur_demande          ?? 1,
     dureeArchivageDemandes:  data.duree_archivage_demandes  ?? 90,
+    officineNom:          data.officine_nom          ?? '',
+    officineAdresse:      data.officine_adresse      ?? '',
+    officineVille:        data.officine_ville        ?? '',
+    officineTelephone:    data.officine_telephone    ?? '',
+    officineFax:          data.officine_fax          ?? '',
+    officineInpe:         data.officine_inpe         ?? '',
+    officinePatente:      data.officine_patente      ?? '',
+    officineRc:           data.officine_rc           ?? '',
+    officineIf:           data.officine_if           ?? '',
+    officineCnss:         data.officine_cnss         ?? '',
+    tvaHulio:             data.tva_hulio             ?? 0,
+    prefixeFactureHulio:  data.prefixe_facture_hulio  ?? 'HUL',
+    compteurFactureHulio: data.compteur_facture_hulio ?? 1,
   }
 }
 
@@ -105,6 +125,19 @@ const CAMEL_TO_SNAKE = {
   prefixeDemande:          'prefixe_demande',
   compteurDemande:         'compteur_demande',
   dureeArchivageDemandes:  'duree_archivage_demandes',
+  officineNom:          'officine_nom',
+  officineAdresse:      'officine_adresse',
+  officineVille:        'officine_ville',
+  officineTelephone:    'officine_telephone',
+  officineFax:          'officine_fax',
+  officineInpe:         'officine_inpe',
+  officinePatente:      'officine_patente',
+  officineRc:           'officine_rc',
+  officineIf:           'officine_if',
+  officineCnss:         'officine_cnss',
+  tvaHulio:             'tva_hulio',
+  prefixeFactureHulio:  'prefixe_facture_hulio',
+  compteurFactureHulio: 'compteur_facture_hulio',
   rib1:       'rib_1',
   rib1Label:  'rib_1_label',
   rib2:       'rib_2',

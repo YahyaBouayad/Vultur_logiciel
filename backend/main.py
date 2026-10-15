@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from database import engine, Base
 import models  # noqa: enregistre tous les modèles sur Base
-from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth, parametres, recettes, production, demandes_achat
+from routes import produits, stock, clients, fournisseurs, bons_livraison, bons_commande, factures, relances, avoirs, paiements, auth, parametres, recettes, production, demandes_achat, hulio
 
 Base.metadata.create_all(bind=engine)
 
@@ -141,6 +141,21 @@ with engine.connect() as _conn:
             prix_unitaire NUMERIC(10,2) NOT NULL
         )
     """))
+    # Suivi Hulio — tables traitements_hulio / livraisons_hulio créées par create_all
+    _conn.execute(text("ALTER TABLE produits ADD COLUMN IF NOT EXISTS suivi_hulio BOOLEAN NOT NULL DEFAULT FALSE"))
+    _conn.execute(text("ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS livraison_hulio_id INTEGER REFERENCES livraisons_hulio(id)"))
+    # Factures Hulio (format ANAM) — table factures_hulio créée par create_all
+    _conn.execute(text("ALTER TABLE factures ALTER COLUMN bon_livraison_id DROP NOT NULL"))
+    _conn.execute(text("ALTER TABLE factures ADD COLUMN IF NOT EXISTS type_facture VARCHAR NOT NULL DEFAULT 'standard'"))
+    _conn.execute(text("ALTER TABLE produits ADD COLUMN IF NOT EXISTS pbr NUMERIC(10,2)"))
+    _conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS nom_assure VARCHAR"))
+    _conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS immatriculation VARCHAR"))
+    _conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS numero_prise_en_charge VARCHAR"))
+    for _col in ("nom", "adresse", "ville", "telephone", "fax", "inpe", "patente", "rc", "if", "cnss"):
+        _conn.execute(text(f"ALTER TABLE parametres ADD COLUMN IF NOT EXISTS officine_{_col} VARCHAR"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS tva_hulio NUMERIC(5,2) NOT NULL DEFAULT 0"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prefixe_facture_hulio VARCHAR NOT NULL DEFAULT 'HUL'"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS compteur_facture_hulio INTEGER NOT NULL DEFAULT 1"))
     _conn.commit()
 
 app = FastAPI(title="Vultur - Gestion d'entreprise", redirect_slashes=False)
@@ -168,6 +183,7 @@ app.include_router(parametres.router)
 app.include_router(recettes.router)
 app.include_router(production.router)
 app.include_router(demandes_achat.router)
+app.include_router(hulio.router)
 
 
 @app.get("/")

@@ -22,3 +22,5 @@ class Produit(Base):
     alerte_ignoree  = Column(Boolean, default=False, nullable=False)
     unite           = Column(String, nullable=False, default='unité')
     type_produit    = Column(String, nullable=True)
+    suivi_hulio     = Column(Boolean, default=False, nullable=False, server_default='false')  # produit proposé dans Suivi Hulio
+    pbr             = Column(Numeric(10, 2), nullable=True)  # prix base de remboursement (facture ANAM) ; PPM = prix

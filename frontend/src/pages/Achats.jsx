@@ -43,7 +43,8 @@ export default function Achats() {
   const [editingId, setEditingId]           = useState(null)
   const [formLoading, setFormLoading]       = useState(false)
   const [lignes, setLignes]                 = useState([{ produit_id: null, quantite: 1, prix_unitaire: 0, remise: 0 }])
-  const [pdfBase64, setPdfBase64]           = useState(null)
+  const [pdfBase64, setPdfBase64]           = useState(null)  // nouveau PDF choisi dans la modale
+  const [pdfExistant, setPdfExistant]       = useState(false) // le BC édité a déjà un PDF en base
   const [tvaActive, setTvaActive]           = useState(false)
   const [originalTvaIncluse, setOriginalTvaIncluse] = useState(false)
 
@@ -93,6 +94,7 @@ export default function Achats() {
     form.setFieldsValue({ date: dayjs() })
     setLignes([{ produit_id: null, quantite: 1, prix_unitaire: 0, remise: 0 }])
     setPdfBase64(null)
+    setPdfExistant(false)
     setTvaActive(false)
     setOriginalTvaIncluse(false)
     setModalMode('create')
@@ -112,7 +114,8 @@ export default function Achats() {
       prix_unitaire: Number(l.prix_unitaire),
       remise:        Number(l.remise || 0),
     })))
-    setPdfBase64(record.pdf_base64 || null)
+    setPdfBase64(null)
+    setPdfExistant(!!record.has_pdf)
     setTvaActive(record.tva_incluse || false)
     setOriginalTvaIncluse(record.tva_incluse || false)
     setModalMode('edit')
@@ -151,8 +154,10 @@ export default function Achats() {
             remise:        Number(l.remise ?? 0),
           }
         }),
-        pdf_base64: pdfBase64 || null,
       }
+      // pdf_base64 n'est envoyé que s'il change : nouveau fichier, ou suppression de l'existant
+      if (pdfBase64) payload.pdf_base64 = pdfBase64
+      else if (modalMode === 'edit' && !pdfExistant) payload.pdf_base64 = null
       if (modalMode === 'edit') {
         await api.put(`/bons-commande/${editingId}`, payload)
         message.success('Bon de commande modifié')
@@ -265,11 +270,16 @@ export default function Achats() {
     return false
   }
 
-  const downloadPdf = (bc) => {
-    const link = document.createElement('a')
-    link.href = `data:application/pdf;base64,${bc.pdf_base64}`
-    link.download = `BC-${String(bc.id).padStart(4, '0')}.pdf`
-    link.click()
+  const downloadPdf = async (bc) => {
+    try {
+      const res = await api.get(`/bons-commande/${bc.id}/pdf`)
+      const link = document.createElement('a')
+      link.href = `data:application/pdf;base64,${res.data.pdf_base64}`
+      link.download = `BC-${String(bc.id).padStart(4, '0')}.pdf`
+      link.click()
+    } catch {
+      message.error('Erreur lors du téléchargement du PDF')
+    }
   }
 
   const columns = [
@@ -367,7 +377,7 @@ export default function Achats() {
               Détail
             </Button>
           </Tooltip>
-          {record.pdf_base64 && (
+          {record.has_pdf && (
             <Tooltip title="Télécharger le PDF">
               <Button size="small" icon={<FilePdfOutlined />}
                 style={{ color: '#dc2626', borderColor: '#dc2626' }}
@@ -465,12 +475,12 @@ export default function Achats() {
           <Form.Item label="PDF du bon de commande (optionnel)">
             <Upload beforeUpload={handlePdfUpload} accept=".pdf" maxCount={1} showUploadList={false}>
               <Button icon={<UploadOutlined />}>
-                {pdfBase64 ? '✓ PDF chargé — cliquer pour remplacer' : 'Joindre un PDF'}
+                {(pdfBase64 || pdfExistant) ? '✓ PDF chargé — cliquer pour remplacer' : 'Joindre un PDF'}
               </Button>
             </Upload>
-            {pdfBase64 && (
+            {(pdfBase64 || pdfExistant) && (
               <Button type="link" danger size="small" style={{ marginLeft: 8 }}
-                onClick={() => setPdfBase64(null)}>
+                onClick={() => { setPdfBase64(null); setPdfExistant(false) }}>
                 Supprimer
               </Button>
             )}
@@ -681,7 +691,7 @@ export default function Achats() {
 
               {/* PDF */}
               <div style={{ marginBottom: 20 }}>
-                {selected.pdf_base64 ? (
+                {selected.has_pdf ? (
                   <Space>
                     <Button icon={<FilePdfOutlined />}
                       onClick={() => downloadPdf(selected)}

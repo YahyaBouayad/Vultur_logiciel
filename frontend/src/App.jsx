@@ -4,22 +4,27 @@ import frFR from 'antd/locale/fr_FR'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ImpayesProvider } from './context/ImpayesContext'
 import { SettingsProvider } from './context/SettingsContext'
+import { lazy } from 'react'
 import AppLayout from './components/Layout'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Produits from './pages/Produits'
-import Clients from './pages/Clients'
-import Fournisseurs from './pages/Fournisseurs'
-import Achats from './pages/Achats'
-import BonsLivraison from './pages/BonsLivraison'
-import Factures from './pages/Factures'
-import Admin from './pages/Admin'
-import Parametres from './pages/Parametres'
-import Comptabilite from './pages/Comptabilite'
-import Avoirs from './pages/Avoirs'
-import SuiviPaiements from './pages/SuiviPaiements'
-import Production from './pages/Production'
-import DemandesAchat from './pages/DemandesAchat'
+
+// Pages chargées à la demande : chaque page (et ses librairies lourdes : PDF, graphiques, ZIP)
+// n'est téléchargée qu'à sa première ouverture
+const Dashboard      = lazy(() => import('./pages/Dashboard'))
+const Produits       = lazy(() => import('./pages/Produits'))
+const Clients        = lazy(() => import('./pages/Clients'))
+const Fournisseurs   = lazy(() => import('./pages/Fournisseurs'))
+const Achats         = lazy(() => import('./pages/Achats'))
+const BonsLivraison  = lazy(() => import('./pages/BonsLivraison'))
+const Factures       = lazy(() => import('./pages/Factures'))
+const Admin          = lazy(() => import('./pages/Admin'))
+const Parametres     = lazy(() => import('./pages/Parametres'))
+const Comptabilite   = lazy(() => import('./pages/Comptabilite'))
+const Avoirs         = lazy(() => import('./pages/Avoirs'))
+const SuiviPaiements = lazy(() => import('./pages/SuiviPaiements'))
+const Production     = lazy(() => import('./pages/Production'))
+const DemandesAchat  = lazy(() => import('./pages/DemandesAchat'))
+const SuiviHulio     = lazy(() => import('./pages/SuiviHulio'))
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -45,6 +50,7 @@ function AppRoutes() {
         <Route path="avoirs" element={<Avoirs />} />
         <Route path="suivi-paiements" element={<SuiviPaiements />} />
         <Route path="production" element={<Production />} />
+        <Route path="suivi-hulio" element={<SuiviHulio />} />
         <Route path="admin" element={<Admin />} />
         <Route path="parametres" element={<Parametres />} />
       </Route>

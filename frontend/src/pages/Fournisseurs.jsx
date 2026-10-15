@@ -140,11 +140,16 @@ export default function Fournisseurs() {
     return { total: historique.length, recus: recus.length, enCours: enCours.length, totalAchete, totalEnCours }
   }, [historique])
 
-  const downloadPdf = (bc) => {
-    const link = document.createElement('a')
-    link.href = `data:application/pdf;base64,${bc.pdf_base64}`
-    link.download = `BC-${String(bc.id).padStart(4, '0')}.pdf`
-    link.click()
+  const downloadPdf = async (bc) => {
+    try {
+      const res = await api.get(`/bons-commande/${bc.id}/pdf`)
+      const link = document.createElement('a')
+      link.href = `data:application/pdf;base64,${res.data.pdf_base64}`
+      link.download = `BC-${String(bc.id).padStart(4, '0')}.pdf`
+      link.click()
+    } catch {
+      message.error('Erreur lors du téléchargement du PDF')
+    }
   }
 
   const bcColumns = [
@@ -182,7 +187,7 @@ export default function Fournisseurs() {
       title: '',
       key: 'pdf',
       width: 40,
-      render: (_, bc) => bc.pdf_base64
+      render: (_, bc) => bc.has_pdf
         ? <Tooltip title="Télécharger PDF">
             <Button size="small" icon={<FilePdfOutlined />}
               style={{ color: '#dc2626', borderColor: '#fecaca' }}

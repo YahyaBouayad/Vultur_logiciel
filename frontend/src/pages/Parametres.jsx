@@ -6,7 +6,7 @@ import {
 import {
   BankOutlined, FileTextOutlined, LockOutlined, SaveOutlined,
   InfoCircleOutlined, UploadOutlined, DeleteOutlined, BgColorsOutlined,
-  PercentageOutlined, ExperimentOutlined, EyeOutlined,
+  PercentageOutlined, ExperimentOutlined, EyeOutlined, MedicineBoxOutlined,
 } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
@@ -964,6 +964,114 @@ function OngletCompte() {
   )
 }
 
+/* ─── Onglet : Officine (factures Hulio) ─────────────────── */
+const CHAMPS_OFFICINE = [
+  'officineNom', 'officineAdresse', 'officineVille', 'officineTelephone', 'officineFax',
+  'officineInpe', 'officinePatente', 'officineRc', 'officineIf', 'officineCnss',
+  'tvaHulio', 'prefixeFactureHulio', 'compteurFactureHulio',
+]
+
+function OngletOfficine({ settings, saveSettings }) {
+  const [form] = Form.useForm()
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    form.setFieldsValue(Object.fromEntries(CHAMPS_OFFICINE.map(k => [k, settings[k]])))
+  }, [settings, form])
+
+  const prefixe = Form.useWatch('prefixeFactureHulio', form) || 'HUL'
+  const compteur = Form.useWatch('compteurFactureHulio', form) || 1
+  const annee2 = String(new Date().getFullYear()).slice(-2)
+
+  const onSave = async (values) => {
+    setSaving(true)
+    await saveSettings({ ...values, prefixeFactureHulio: (values.prefixeFactureHulio || 'HUL').trim().toUpperCase() })
+    setSaving(false)
+    message.success('Informations de l\'officine sauvegardées')
+  }
+
+  return (
+    <Form form={form} layout="vertical" onFinish={onSave} style={{ maxWidth: 700 }}>
+      <Alert
+        type="info" showIcon icon={<InfoCircleOutlined />}
+        message="Ces informations remplissent la facture médicaments (format ANAM tiers payant) des traitements Hulio. Les champs laissés vides reprennent ceux de « Ma société »."
+        style={{ marginBottom: 24, borderRadius: 8 }}
+      />
+      <SectionTitle icon={<MedicineBoxOutlined />}>Officine</SectionTitle>
+      <Row gutter={16}>
+        <Col span={16}>
+          <Form.Item name="officineNom" label="Nom de l'officine">
+            <Input placeholder={settings.nom || 'Pharmacie …'} />
+          </Form.Item>
+        </Col>
+        <Col span={8}>
+          <Form.Item name="officineInpe" label="INPE du pharmacien">
+            <Input />
+          </Form.Item>
+        </Col>
+        <Col span={16}>
+          <Form.Item name="officineAdresse" label="Adresse">
+            <Input placeholder={settings.adresse} />
+          </Form.Item>
+        </Col>
+        <Col span={8}>
+          <Form.Item name="officineVille" label="Ville (« Fait à »)">
+            <Input placeholder={settings.ville} />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item name="officineTelephone" label="Téléphone">
+            <Input placeholder={settings.telephone} />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item name="officineFax" label="Fax">
+            <Input />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Divider />
+      <SectionTitle icon={<BankOutlined />}>Identifiants (pied de facture)</SectionTitle>
+      <Row gutter={16}>
+        <Col span={6}><Form.Item name="officinePatente" label="Patente"><Input /></Form.Item></Col>
+        <Col span={6}><Form.Item name="officineRc" label="RC"><Input placeholder={settings.rc} /></Form.Item></Col>
+        <Col span={6}><Form.Item name="officineIf" label="IF"><Input /></Form.Item></Col>
+        <Col span={6}><Form.Item name="officineCnss" label="CNSS"><Input /></Form.Item></Col>
+      </Row>
+
+      <Divider />
+      <SectionTitle icon={<FileTextOutlined />}>Factures Hulio</SectionTitle>
+      <Row gutter={16}>
+        <Col span={8}>
+          <Form.Item name="prefixeFactureHulio" label="Préfixe">
+            <Input maxLength={6} style={{ textTransform: 'uppercase' }} />
+          </Form.Item>
+        </Col>
+        <Col span={8}>
+          <Form.Item name="compteurFactureHulio" label="Prochain numéro">
+            <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+        </Col>
+        <Col span={8}>
+          <Form.Item name="tvaHulio" label="TVA sur les médicaments (%)"
+            tooltip="Le PPM est un prix TTC. Ce taux sert à calculer le HT et la TVA collectée en comptabilité. À valider avec votre comptable.">
+            <InputNumber min={0} max={100} style={{ width: '100%' }} addonAfter="%" />
+          </Form.Item>
+        </Col>
+      </Row>
+      <Text type="secondary">
+        Prochaine facture : <Text code>{`${prefixe.trim().toUpperCase()}-${String(compteur).padStart(3, '0')}/${annee2}`}</Text>
+      </Text>
+      <div>
+        <Button type="primary" htmlType="submit" icon={<SaveOutlined />} size="large" loading={saving}
+          style={{ background: '#1e293b', borderColor: '#1e293b', marginTop: 20 }}>
+          Enregistrer
+        </Button>
+      </div>
+    </Form>
+  )
+}
+
 /* ─── Page principale ────────────────────────────────────── */
 export default function Parametres() {
   const { settings, saveSettings } = useSettings()
@@ -978,6 +1086,11 @@ export default function Parametres() {
       key: 'facturation',
       label: <span><FileTextOutlined style={{ marginRight: 6 }} />Facturation</span>,
       children: <OngletFacturation settings={settings} saveSettings={saveSettings} />,
+    },
+    {
+      key: 'officine',
+      label: <span><MedicineBoxOutlined style={{ marginRight: 6 }} />Officine (Hulio)</span>,
+      children: <OngletOfficine settings={settings} saveSettings={saveSettings} />,
     },
     {
       key: 'pdf',

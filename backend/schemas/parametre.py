@@ -47,6 +47,21 @@ class ParametreOut(BaseModel):
     compteur_demande: int = 1
     duree_archivage_demandes: int = 90
 
+    # Officine (factures Hulio)
+    officine_nom: Optional[str] = None
+    officine_adresse: Optional[str] = None
+    officine_ville: Optional[str] = None
+    officine_telephone: Optional[str] = None
+    officine_fax: Optional[str] = None
+    officine_inpe: Optional[str] = None
+    officine_patente: Optional[str] = None
+    officine_rc: Optional[str] = None
+    officine_if: Optional[str] = None
+    officine_cnss: Optional[str] = None
+    tva_hulio: float = 0.0
+    prefixe_facture_hulio: str = 'HUL'
+    compteur_facture_hulio: int = 1
+
     class Config:
         from_attributes = True
 
@@ -95,7 +110,22 @@ class ParametreUpdate(BaseModel):
     compteur_demande: Optional[int] = None
     duree_archivage_demandes: Optional[int] = None
 
-    @field_validator('compteur_facture')
+    # Officine (factures Hulio)
+    officine_nom: Optional[str] = None
+    officine_adresse: Optional[str] = None
+    officine_ville: Optional[str] = None
+    officine_telephone: Optional[str] = None
+    officine_fax: Optional[str] = None
+    officine_inpe: Optional[str] = None
+    officine_patente: Optional[str] = None
+    officine_rc: Optional[str] = None
+    officine_if: Optional[str] = None
+    officine_cnss: Optional[str] = None
+    tva_hulio: Optional[float] = None
+    prefixe_facture_hulio: Optional[str] = None
+    compteur_facture_hulio: Optional[int] = None
+
+    @field_validator('compteur_facture', 'compteur_facture_hulio')
     @classmethod
     def positif(cls, v):
         if v is not None and v < 1:

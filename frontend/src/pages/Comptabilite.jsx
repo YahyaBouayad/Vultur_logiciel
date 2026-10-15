@@ -1,4 +1,4 @@
-import { Card, Col, Row, Statistic, Typography, Table, Tabs, Button, Badge, Empty, Dropdown, Modal } from 'antd'
+import { Card, Col, Row, Statistic, Typography, Table, Tabs, Button, Badge, Empty, Dropdown, Modal, Tooltip, Tag } from 'antd'
 import { DownloadOutlined, FilePdfOutlined, FileZipOutlined, DownOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
@@ -10,6 +10,7 @@ import api from '../api/axios'
 import { useSettings } from '../context/SettingsContext'
 import FacturePDF from '../components/pdf/FacturePDF'
 import AllFacturesPDF from '../components/pdf/AllFacturesPDF'
+import FactureHulioPDF from '../components/pdf/FactureHulioPDF'
 
 dayjs.extend(quarterOfYear)
 
@@ -87,9 +88,14 @@ export default function Comptabilite() {
   // KPIs calculés
   const facturesActives = factures.filter(f => f.statut !== 'annulée')
   const achatsFiltres   = achats.filter(a => a.statut === 'reçu')
+  // Factures Hulio : taux propre à la facture (médicaments) ; sinon taux des paramètres
+  const tauxFacture = (f) => f.taux_tva ?? tauxTVA
+  const tvaFacture  = (f) => (f.montant_ht || 0) * tauxFacture(f) / 100
+  const ttcFacture  = (f) => (f.montant_ht || 0) + tvaFacture(f)
+
   const caHT            = facturesActives.reduce((s, f) => s + (f.montant_ht || 0), 0)
   const achatsHT        = achatsFiltres.reduce((s, a) => s + totalBC(a), 0)
-  const tvaCollectee    = caHT * tauxTVA / 100
+  const tvaCollectee    = facturesActives.reduce((s, f) => s + tvaFacture(f), 0)
   const tvaDeductible   = achatsHT * tauxTVA / 100
   const soldeTVA        = tvaCollectee - tvaDeductible
   const margeBrute      = caHT - achatsHT
@@ -98,8 +104,13 @@ export default function Comptabilite() {
   // ─── Colonnes journal des ventes ────────────────────────
   const colVentes = [
     {
-      title: 'Numéro', dataIndex: 'numero', width: 150,
-      render: v => <Text code style={{ fontWeight: 600 }}>{v}</Text>,
+      title: 'Numéro', dataIndex: 'numero', width: 170,
+      render: (v, r) => (
+        <>
+          <Text code style={{ fontWeight: 600 }}>{v}</Text>
+          {r.type_facture === 'hulio' && <Tag color="magenta" style={{ marginLeft: 4 }}>Hulio</Tag>}
+        </>
+      ),
     },
     {
       title: 'Client', dataIndex: 'client_id',
@@ -118,12 +129,12 @@ export default function Comptabilite() {
       render: (_, r) => `${fmt(r.montant_ht)} MAD`,
     },
     {
-      title: `TVA ${tauxTVA}%`, key: 'tva', width: 110,
-      render: (_, r) => `${fmt((r.montant_ht || 0) * tauxTVA / 100)} MAD`,
+      title: 'TVA', key: 'tva', width: 110,
+      render: (_, r) => <Tooltip title={`${tauxFacture(r)} %`}>{`${fmt(tvaFacture(r))} MAD`}</Tooltip>,
     },
     {
       title: 'TTC', key: 'ttc', width: 130,
-      render: (_, r) => <Text strong>{fmt((r.montant_ht || 0) * (1 + tauxTVA / 100))} MAD</Text>,
+      render: (_, r) => <Text strong>{fmt(ttcFacture(r))} MAD</Text>,
     },
     {
       title: 'Statut', dataIndex: 'statut', width: 100,
@@ -154,7 +165,7 @@ export default function Comptabilite() {
       render: (_, r) => `${fmt(totalBC(r))} MAD`,
     },
     {
-      title: `TVA ${tauxTVA}%`, key: 'tva', width: 110,
+      title: 'TVA', key: 'tva', width: 110,
       render: (_, r) => `${fmt(totalBC(r) * tauxTVA / 100)} MAD`,
     },
     {
@@ -175,8 +186,10 @@ export default function Comptabilite() {
 
   const fetchAllBL = async () => {
     const bls = await Promise.all(
-      facturesActives.map(f =>
-        api.get(`/bons-livraison/${f.bon_livraison_id}`).then(r => r.data)
+      // Les factures Hulio n'ont pas de BL : leur détail est déjà dans la facture
+      facturesActives.map(f => f.type_facture === 'hulio'
+        ? Promise.resolve(null)
+        : api.get(`/bons-livraison/${f.bon_livraison_id}`).then(r => r.data)
       )
     )
     return facturesActives.map((f, i) => ({ facture: f, bl: bls[i] }))
@@ -216,16 +229,19 @@ export default function Comptabilite() {
       const zip = new JSZip()
       await Promise.all(
         invoices.map(async ({ facture, bl }) => {
-          const blob = await pdf(
-            <FacturePDF
-              facture={facture}
-              client={clients.find(c => c.id === facture.client_id)}
-              bl={bl}
-              produits={produits}
-              entreprise={settings}
-            />
+          const blob = await pdf(facture.type_facture === 'hulio'
+            ? <FactureHulioPDF facture={facture} entreprise={settings} />
+            : (
+              <FacturePDF
+                facture={facture}
+                client={clients.find(c => c.id === facture.client_id)}
+                bl={bl}
+                produits={produits}
+                entreprise={settings}
+              />
+            )
           ).toBlob()
-          zip.file(`${facture.numero}.pdf`, blob)
+          zip.file(`${facture.numero.replace(/\//g, '-')}.pdf`, blob)
         })
       )
       const content = await zip.generateAsync({ type: 'blob' })
@@ -260,15 +276,16 @@ export default function Comptabilite() {
   const exportVentes = () => {
     exportCSV(
       `journal-ventes-${dateRange[0].format('YYYY-MM-DD')}_${dateRange[1].format('YYYY-MM-DD')}.csv`,
-      ['Numéro', 'Client', 'Date émission', 'Échéance', 'Montant HT', `TVA ${tauxTVA}%`, 'Montant TTC', 'Statut'],
+      ['Numéro', 'Client', 'Date émission', 'Échéance', 'Montant HT', 'Taux TVA', 'TVA', 'Montant TTC', 'Statut'],
       facturesActives.map(f => [
         f.numero,
         clients.find(c => c.id === f.client_id)?.nom || '',
         new Date(f.date_emission).toLocaleDateString('fr-FR'),
         f.date_echeance ? new Date(f.date_echeance).toLocaleDateString('fr-FR') : '',
         fmt(f.montant_ht),
-        fmt((f.montant_ht || 0) * tauxTVA / 100),
-        fmt((f.montant_ht || 0) * (1 + tauxTVA / 100)),
+        `${tauxFacture(f)} %`,
+        fmt(tvaFacture(f)),
+        fmt(ttcFacture(f)),
         f.statut,
       ])
     )
@@ -325,7 +342,7 @@ export default function Comptabilite() {
                       </Table.Summary.Cell>
                       <Table.Summary.Cell>
                         <Text strong style={{ color: '#10b981' }}>
-                          {fmt(caHT * (1 + tauxTVA / 100))} MAD
+                          {fmt(caHT + tvaCollectee)} MAD
                         </Text>
                       </Table.Summary.Cell>
                       <Table.Summary.Cell />
@@ -458,7 +475,7 @@ export default function Comptabilite() {
         <Col xs={24} sm={12} lg={4}>
           <Card style={{ borderRadius: 10, borderTop: '3px solid #8b5cf6' }}>
             <Statistic
-              title={`TVA collectée (${tauxTVA}%)`}
+              title="TVA collectée"
               value={fmt(tvaCollectee)}
               suffix="MAD"
               valueStyle={{ color: '#8b5cf6', fontSize: 17, fontWeight: 700 }}

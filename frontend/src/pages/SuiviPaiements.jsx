@@ -227,8 +227,13 @@ export default function SuiviPaiements() {
     {
       title: 'Facture',
       dataIndex: 'facture_numero',
-      width: 150,
-      render: v => <Text code style={{ fontWeight: 600 }}>{v}</Text>,
+      width: 170,
+      render: (v, r) => (
+        <>
+          <Text code style={{ fontWeight: 600 }}>{v}</Text>
+          {r.type_facture === 'hulio' && <Tag color="magenta" style={{ marginLeft: 4 }}>Hulio</Tag>}
+        </>
+      ),
     },
     {
       title: 'Client',

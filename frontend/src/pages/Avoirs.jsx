@@ -67,7 +67,8 @@ export default function Avoirs() {
       const facture = { numero: avoir.facture_numero, date_emission: avoir.facture_date_emission || null }
       const client  = clients.find(c => c.id === avoir.client_id)
       const blob = await pdf(
-        <AvoirPDF avoir={avoir} facture={facture} client={client} entreprise={settings} />
+        <AvoirPDF avoir={avoir} facture={facture} client={client}
+          entreprise={avoir.facture_taux_tva != null ? { ...settings, tva: avoir.facture_taux_tva } : settings} />
       ).toBlob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

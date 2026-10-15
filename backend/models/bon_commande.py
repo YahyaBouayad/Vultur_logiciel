@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Numeric, Date, Text, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, column_property, deferred
 from database import Base
 import datetime
 
@@ -12,11 +12,15 @@ class BonCommande(Base):
     date           = Column(Date, default=datetime.date.today, nullable=False)
     statut         = Column(String, default="brouillon", nullable=False)  # brouillon | envoyé | reçu
     notes          = Column(Text, nullable=True)
-    pdf_base64     = Column(Text, nullable=True)
+    pdf_base64     = deferred(Column(Text, nullable=True))  # lourd : chargé seulement via GET /bons-commande/{id}/pdf
     tva_incluse    = Column(Boolean, nullable=False, default=False, server_default='false')
 
     fournisseur = relationship("Fournisseur")
     lignes      = relationship("LigneBonCommande", back_populates="bon_commande", cascade="all, delete-orphan")
+
+
+# Indique la présence d'un PDF sans charger son contenu
+BonCommande.has_pdf = column_property(BonCommande.__table__.c.pdf_base64.isnot(None))
 
 
 class LigneBonCommande(Base):

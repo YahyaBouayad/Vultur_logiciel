@@ -9,7 +9,8 @@ class Facture(Base):
 
     id               = Column(Integer, primary_key=True, index=True)
     numero           = Column(String, unique=True, nullable=False, index=True)
-    bon_livraison_id = Column(Integer, ForeignKey("bons_livraison.id"), nullable=False)
+    bon_livraison_id = Column(Integer, ForeignKey("bons_livraison.id"), nullable=True)  # NULL pour une facture Hulio
+    type_facture     = Column(String, default="standard", nullable=False, server_default="standard")  # standard | hulio
     client_id        = Column(Integer, ForeignKey("clients.id"), nullable=False)
     date_emission    = Column(Date, default=datetime.date.today, nullable=False)
     date_echeance    = Column(Date, nullable=True)
@@ -22,3 +23,4 @@ class Facture(Base):
     relances      = relationship("Relance", back_populates="facture", cascade="all, delete-orphan", order_by="Relance.date")
     avoirs        = relationship("Avoir",    back_populates="facture", cascade="all, delete-orphan", order_by="Avoir.date")
     paiements     = relationship("Paiement", back_populates="facture", cascade="all, delete-orphan", order_by="Paiement.date")
+    hulio         = relationship("FactureHulio", back_populates="facture", uselist=False, cascade="all, delete-orphan", lazy="joined")
