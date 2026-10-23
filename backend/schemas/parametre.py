@@ -58,6 +58,10 @@ class ParametreOut(BaseModel):
     officine_rc: Optional[str] = None
     officine_if: Optional[str] = None
     officine_cnss: Optional[str] = None
+    officine_pharmacien: Optional[str] = None
+    officine_ice: Optional[str] = None
+    officine_rib: Optional[str] = None
+    officine_logo: Optional[str] = None
     tva_hulio: float = 0.0
     prefixe_facture_hulio: str = 'HUL'
     compteur_facture_hulio: int = 1
@@ -121,6 +125,10 @@ class ParametreUpdate(BaseModel):
     officine_rc: Optional[str] = None
     officine_if: Optional[str] = None
     officine_cnss: Optional[str] = None
+    officine_pharmacien: Optional[str] = None
+    officine_ice: Optional[str] = None
+    officine_rib: Optional[str] = None
+    officine_logo: Optional[str] = None
     tva_hulio: Optional[float] = None
     prefixe_facture_hulio: Optional[str] = None
     compteur_facture_hulio: Optional[int] = None

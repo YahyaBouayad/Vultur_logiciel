@@ -968,8 +968,53 @@ function OngletCompte() {
 const CHAMPS_OFFICINE = [
   'officineNom', 'officineAdresse', 'officineVille', 'officineTelephone', 'officineFax',
   'officineInpe', 'officinePatente', 'officineRc', 'officineIf', 'officineCnss',
+  'officinePharmacien', 'officineIce', 'officineRib',
   'tvaHulio', 'prefixeFactureHulio', 'compteurFactureHulio',
 ]
+
+// Logo affiché en en-tête des factures Hulio (enregistré dès l'import, comme le logo société)
+function LogoOfficine({ settings, saveSettings }) {
+  const logo = settings.officineLogo
+
+  const handleUpload = (file) => {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const resized = await resizeImage(e.target.result)
+      await saveSettings({ officineLogo: resized })
+      message.success('Logo de la pharmacie enregistré')
+    }
+    reader.readAsDataURL(file)
+    return false
+  }
+
+  // Chaîne vide et non null : l'API ignore les champs null lors d'une mise à jour
+  const handleRemove = async () => {
+    await saveSettings({ officineLogo: '' })
+    message.success('Logo de la pharmacie supprimé')
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, marginBottom: 8 }}>
+      <div style={{
+        width: 220, height: 110, border: '1.5px dashed #cbd5e1', borderRadius: 8, background: '#f8fafc',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
+      }}>
+        {logo
+          ? <img src={logo} alt="logo pharmacie" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          : <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', padding: 16 }}>Aucun logo<br />Aperçu ici</Text>}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <Upload accept="image/png,image/jpeg,image/svg+xml,image/webp" showUploadList={false} beforeUpload={handleUpload}>
+          <Button icon={<UploadOutlined />}>{logo ? 'Changer le logo' : 'Télécharger le logo'}</Button>
+        </Upload>
+        {logo && <Button icon={<DeleteOutlined />} danger onClick={handleRemove}>Supprimer le logo</Button>}
+        <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.5 }}>
+          Apparaît en haut des factures Hulio.<br />PNG à fond transparent recommandé.
+        </Text>
+      </div>
+    </div>
+  )
+}
 
 function OngletOfficine({ settings, saveSettings }) {
   const [form] = Form.useForm()
@@ -996,6 +1041,10 @@ function OngletOfficine({ settings, saveSettings }) {
         message="Ces informations remplissent la facture médicaments (format ANAM tiers payant) des traitements Hulio. Les champs laissés vides reprennent ceux de « Ma société »."
         style={{ marginBottom: 24, borderRadius: 8 }}
       />
+      <SectionTitle icon={<UploadOutlined />}>Logo de la pharmacie</SectionTitle>
+      <LogoOfficine settings={settings} saveSettings={saveSettings} />
+
+      <Divider />
       <SectionTitle icon={<MedicineBoxOutlined />}>Officine</SectionTitle>
       <Row gutter={16}>
         <Col span={16}>
@@ -1006,6 +1055,11 @@ function OngletOfficine({ settings, saveSettings }) {
         <Col span={8}>
           <Form.Item name="officineInpe" label="INPE du pharmacien">
             <Input />
+          </Form.Item>
+        </Col>
+        <Col span={16}>
+          <Form.Item name="officinePharmacien" label="Pharmacien responsable">
+            <Input placeholder="Dr. …" />
           </Form.Item>
         </Col>
         <Col span={16}>
@@ -1037,6 +1091,8 @@ function OngletOfficine({ settings, saveSettings }) {
         <Col span={6}><Form.Item name="officineRc" label="RC"><Input placeholder={settings.rc} /></Form.Item></Col>
         <Col span={6}><Form.Item name="officineIf" label="IF"><Input /></Form.Item></Col>
         <Col span={6}><Form.Item name="officineCnss" label="CNSS"><Input /></Form.Item></Col>
+        <Col span={10}><Form.Item name="officineIce" label="ICE"><Input maxLength={15} /></Form.Item></Col>
+        <Col span={14}><Form.Item name="officineRib" label="RIB"><Input /></Form.Item></Col>
       </Row>
 
       <Divider />

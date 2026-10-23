@@ -151,8 +151,9 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS nom_assure VARCHAR"))
     _conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS immatriculation VARCHAR"))
     _conn.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS numero_prise_en_charge VARCHAR"))
-    for _col in ("nom", "adresse", "ville", "telephone", "fax", "inpe", "patente", "rc", "if", "cnss"):
+    for _col in ("nom", "adresse", "ville", "telephone", "fax", "inpe", "patente", "rc", "if", "cnss", "pharmacien", "ice", "rib"):
         _conn.execute(text(f"ALTER TABLE parametres ADD COLUMN IF NOT EXISTS officine_{_col} VARCHAR"))
+    _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS officine_logo TEXT"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS tva_hulio NUMERIC(5,2) NOT NULL DEFAULT 0"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS prefixe_facture_hulio VARCHAR NOT NULL DEFAULT 'HUL'"))
     _conn.execute(text("ALTER TABLE parametres ADD COLUMN IF NOT EXISTS compteur_facture_hulio INTEGER NOT NULL DEFAULT 1"))

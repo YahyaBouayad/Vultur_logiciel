@@ -20,6 +20,7 @@ import { useImpayes } from '../context/ImpayesContext'
 import { useSettings } from '../context/SettingsContext'
 import FacturePDF from '../components/pdf/FacturePDF'
 import FactureHulioPDF from '../components/pdf/FactureHulioPDF'
+import FactureHulioSimplePDF from '../components/pdf/FactureHulioSimplePDF'
 
 const isHulio = (f) => f?.type_facture === 'hulio'
 
@@ -478,12 +479,16 @@ export default function Factures() {
     }
   }
 
-  const downloadFacturePDF = async (record) => {
-    setPdfLoadingIds(prev => new Set([...prev, record.id]))
+  // simple : facture officine simplifiée (factures Hulio uniquement)
+  const downloadFacturePDF = async (record, simple = false) => {
+    const loadingKey = simple ? `simple-${record.id}` : record.id
+    setPdfLoadingIds(prev => new Set([...prev, loadingKey]))
     try {
       let doc
       if (isHulio(record)) {
-        doc = <FactureHulioPDF facture={record} entreprise={settings} />
+        doc = simple
+          ? <FactureHulioSimplePDF facture={record} entreprise={settings} />
+          : <FactureHulioPDF facture={record} entreprise={settings} />
       } else {
         const r = await api.get(`/bons-livraison/${record.bon_livraison_id}`)
         doc = (
@@ -500,13 +505,13 @@ export default function Factures() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${record.numero}.pdf`
+      a.download = `${record.numero}${simple ? '-simple' : ''}.pdf`
       a.click()
       URL.revokeObjectURL(url)
     } catch {
       message.error('Erreur lors de la génération du PDF')
     } finally {
-      setPdfLoadingIds(prev => { const s = new Set(prev); s.delete(record.id); return s })
+      setPdfLoadingIds(prev => { const s = new Set(prev); s.delete(loadingKey); return s })
     }
   }
 
@@ -752,6 +757,15 @@ export default function Factures() {
                 style={{ color: '#dc2626', borderColor: '#dc2626' }}>
                 PDF
               </Button>
+            )}
+            {isHulio(selected) && (
+              <Tooltip title="Facture officine simplifiée">
+                <Button icon={<FileTextOutlined />} loading={pdfLoadingIds.has(`simple-${selected.id}`)}
+                  onClick={() => downloadFacturePDF(selected, true)}
+                  style={{ color: '#0ea5e9', borderColor: '#0ea5e9' }}>
+                  PDF simple
+                </Button>
+              </Tooltip>
             )}
             {selected?.statut === 'émise' && (
               <>

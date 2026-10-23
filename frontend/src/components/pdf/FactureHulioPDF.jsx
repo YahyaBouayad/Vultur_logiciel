@@ -9,6 +9,7 @@ const B = '0.8 solid #000'
 const s = StyleSheet.create({
   page: { fontFamily: 'Times-Roman', fontSize: 9, color: '#000', padding: '28 36 24' },
 
+  logo: { height: 48, maxWidth: 180, objectFit: 'contain', objectPositionX: 0, marginBottom: 6 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', fontSize: 8 },
   center: { textAlign: 'center' },
   convention: { textAlign: 'center', fontSize: 10, marginTop: 6 },
@@ -95,6 +96,7 @@ export function FactureHulioPage({ facture, entreprise = {} }) {
 
   return (
     <Page size="A4" style={s.page}>
+      {E.officineLogo && <Image src={E.officineLogo} style={s.logo} />}
       <View style={s.topRow}>
         <View>
           <Text>Assurance Maladie Obligatoire</Text>

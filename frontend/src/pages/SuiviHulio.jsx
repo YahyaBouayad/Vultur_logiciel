@@ -8,7 +8,7 @@ import {
   PlusOutlined, DeleteOutlined, EditOutlined, CheckOutlined, PhoneOutlined,
   CalendarOutlined, BellOutlined, WarningOutlined, UserOutlined, RollbackOutlined,
   StopOutlined, MinusCircleOutlined, ThunderboltOutlined, EyeOutlined, UndoOutlined,
-  HistoryOutlined, InboxOutlined, FilePdfOutlined, ExportOutlined,
+  HistoryOutlined, InboxOutlined, FilePdfOutlined, FileTextOutlined, ExportOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { pdf } from '@react-pdf/renderer'
@@ -16,6 +16,7 @@ import dayjs from 'dayjs'
 import api from '../api/axios'
 import { useSettings } from '../context/SettingsContext'
 import FactureHulioPDF from '../components/pdf/FactureHulioPDF'
+import FactureHulioSimplePDF from '../components/pdf/FactureHulioSimplePDF'
 import { calculHulio, champsManquantsHulio } from '../utils/hulio'
 
 const { Title, Text } = Typography
@@ -375,14 +376,16 @@ export default function SuiviHulio() {
     setFModal({ mode: 'edit', facture: f })
   }
 
-  const telechargerFacture = async (f) => {
-    setPdfLoadingId(f.id)
+  // simple = facture de l'officine (modèle carnet) ; sinon formulaire ANAM tiers payant
+  const telechargerFacture = async (f, simple = false) => {
+    setPdfLoadingId(simple ? `simple-${f.id}` : f.id)
     try {
-      const blob = await pdf(<FactureHulioPDF facture={f} entreprise={settings} />).toBlob()
+      const Doc = simple ? FactureHulioSimplePDF : FactureHulioPDF
+      const blob = await pdf(<Doc facture={f} entreprise={settings} />).toBlob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${f.numero.replace(/\//g, '-')}.pdf`
+      a.download = `${f.numero.replace(/\//g, '-')}${simple ? '-simple' : ''}.pdf`
       a.click()
       URL.revokeObjectURL(url)
     } catch {
@@ -1548,9 +1551,13 @@ export default function SuiviHulio() {
                   title: '', key: 'actions',
                   render: (_, f) => (
                     <Space size={4}>
-                      <Tooltip title="PDF">
+                      <Tooltip title="PDF format ANAM (tiers payant)">
                         <Button size="small" icon={<FilePdfOutlined />} loading={pdfLoadingId === f.id}
                           onClick={() => imprimerFacture(f)} style={{ color: '#dc2626', borderColor: '#dc2626' }} />
+                      </Tooltip>
+                      <Tooltip title="PDF simplifié (facture officine)">
+                        <Button size="small" icon={<FileTextOutlined />} loading={pdfLoadingId === `simple-${f.id}`}
+                          onClick={() => telechargerFacture(f, true)} style={{ color: '#0ea5e9', borderColor: '#0ea5e9' }} />
                       </Tooltip>
                       {f.statut !== 'annulée' && (
                         <Tooltip title="Compléter / modifier">

@@ -63,6 +63,10 @@ class Parametre(Base):
     officine_rc         = Column(String, nullable=True)
     officine_if         = Column(String, nullable=True)
     officine_cnss       = Column(String, nullable=True)
+    officine_pharmacien = Column(String, nullable=True)  # « Dr. … » (facture simplifiée)
+    officine_ice        = Column(String, nullable=True)
+    officine_rib        = Column(String, nullable=True)
+    officine_logo       = Column(Text,   nullable=True)  # logo de la pharmacie (data URL), en-tête des factures Hulio
     tva_hulio              = Column(Numeric(5, 2), nullable=False, default=0,     server_default='0')
     prefixe_facture_hulio  = Column(String,        nullable=False, default='HUL', server_default="'HUL'")
     compteur_facture_hulio = Column(Integer,       nullable=False, default=1,     server_default='1')
