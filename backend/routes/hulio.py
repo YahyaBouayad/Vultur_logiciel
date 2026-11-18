@@ -92,6 +92,9 @@ def _generer_numero_hulio(db: Session) -> str:
         db.flush()
     prefixe = (p.prefixe_facture_hulio or "HUL").strip()
     numero = p.compteur_facture_hulio or 1
+    # Saute les numéros déjà pris (compteur remis en arrière dans les paramètres) : le numéro est unique
+    while db.query(Facture.id).filter(Facture.numero == f"{prefixe}-{numero:03d}/{annee_2}").first():
+        numero += 1
     p.compteur_facture_hulio = numero + 1
     db.flush()
     return f"{prefixe}-{numero:03d}/{annee_2}"

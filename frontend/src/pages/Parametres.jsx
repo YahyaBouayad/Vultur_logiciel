@@ -1019,6 +1019,10 @@ function LogoOfficine({ settings, saveSettings }) {
 function OngletOfficine({ settings, saveSettings }) {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const { reload } = useSettings()
+
+  // Le compteur avance côté serveur à chaque facture Hulio : on recharge pour afficher la vraie valeur
+  useEffect(() => { reload() }, [reload])
   useEffect(() => {
     form.setFieldsValue(Object.fromEntries(CHAMPS_OFFICINE.map(k => [k, settings[k]])))
   }, [settings, form])
@@ -1029,7 +1033,12 @@ function OngletOfficine({ settings, saveSettings }) {
 
   const onSave = async (values) => {
     setSaving(true)
-    await saveSettings({ ...values, prefixeFactureHulio: (values.prefixeFactureHulio || 'HUL').trim().toUpperCase() })
+    const updates = { ...values, prefixeFactureHulio: (values.prefixeFactureHulio || 'HUL').trim().toUpperCase() }
+    // N'envoyer le compteur que s'il a été modifié à la main : sinon on risquerait de le faire reculer
+    if (!form.isFieldTouched('compteurFactureHulio')) delete updates.compteurFactureHulio
+    await saveSettings(updates)
+    // Réinitialise l'état « modifié » ; la valeur à jour est remise par l'effet ci-dessus quand settings change
+    form.resetFields(['compteurFactureHulio'])
     setSaving(false)
     message.success('Informations de l\'officine sauvegardées')
   }
