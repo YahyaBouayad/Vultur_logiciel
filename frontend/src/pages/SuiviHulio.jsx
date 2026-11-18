@@ -415,6 +415,19 @@ export default function SuiviHulio() {
     })
   }
 
+  // Le serveur ne supprime qu'une facture annulée : on l'annule d'abord si besoin
+  const supprimerFacture = async (f) => {
+    try {
+      if (f.statut !== 'annulée') await api.put(`/factures/${f.id}/statut`, { statut: 'annulée' })
+      await api.delete(`/factures/${f.id}`)
+      message.success(`Facture ${f.numero} supprimée`)
+      reloadTraitements()
+    } catch (e) {
+      message.error(e.response?.data?.detail || 'Erreur lors de la suppression')
+      reloadTraitements()
+    }
+  }
+
   const saveFacture = async (values, imprimer = false) => {
     setFSaving(true)
     try {
@@ -1567,6 +1580,15 @@ export default function SuiviHulio() {
                       <Tooltip title="Paiements, avoirs, relances (page Factures)">
                         <Button size="small" icon={<ExportOutlined />} onClick={() => navigate('/factures', { state: { openFactureId: f.id } })} />
                       </Tooltip>
+                      <Popconfirm
+                        title={`Supprimer la facture ${f.numero} ?`}
+                        description="Suppression définitive. Une facture avec des paiements ne peut pas être supprimée : retirez-les d'abord (page Factures)."
+                        onConfirm={() => supprimerFacture(f)}
+                        okText="Supprimer" cancelText="Annuler" okButtonProps={{ danger: true }}>
+                        <Tooltip title="Supprimer la facture">
+                          <Button size="small" danger icon={<DeleteOutlined />} />
+                        </Tooltip>
+                      </Popconfirm>
                     </Space>
                   ),
                 },
